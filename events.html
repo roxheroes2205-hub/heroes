@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ROX-DB — Events</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #5b7fff;
+    --accent-hover: #4a6eff;
+    --danger: #e05252;
+    --text: #e8eaf0;
+    --text-muted: #7a7f9a;
+    --success: #3ecf8e;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  #auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 40px 48px; width: 380px;
+  }
+  .auth-card h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .auth-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+  .form-group input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; outline: none;
+    transition: border-color .15s;
+  }
+  .form-group input:focus { border-color: var(--accent); }
+  .error-msg { color: var(--danger); font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+    border-radius: 7px; border: none; cursor: pointer; font-size: 0.9rem;
+    font-weight: 500; transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+  .btn-full { width: 100%; justify-content: center; }
+
+  #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-size: 1.1rem; font-weight: 700; }
+  header .logo span { color: var(--accent); }
+  header .user-area { display: flex; align-items: center; gap: 12px; }
+  header .user-email { color: var(--text-muted); font-size: 0.85rem; }
+
+  #main-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; }
+  #main-nav a { padding: 12px 20px; color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+  #main-nav a:hover { color: var(--text); }
+  #main-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  main { padding: 28px 24px; flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
+
+  .placeholder {
+    text-align: center; padding: 80px 20px; color: var(--text-muted);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .placeholder-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .placeholder h2 { color: var(--text); font-size: 1.3rem; margin-bottom: 8px; }
+  .placeholder p { font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>ROX<span style="color:var(--accent)">-DB</span></h1>
+    <p>Guild roster management</p>
+    <div class="error-msg" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div id="app-screen">
+  <header>
+    <div class="logo">ROX<span>-DB</span></div>
+    <div class="user-area">
+      <span class="user-email" id="user-email-display"></span>
+      <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+  <nav id="main-nav">
+    <a href="index.html">Attendance</a>
+    <a href="members.html">Members</a>
+    <a href="events.html" class="active">Events</a>
+    <a href="distribution.html">Distribution</a>
+  </nav>
+
+  <main>
+    <div class="placeholder">
+      <div class="placeholder-icon">⚔️</div>
+      <h2>Event Data</h2>
+      <p>Record KVM, AA, GvG, and xKVM participation.</p>
+      <p style="margin-top:16px;font-size:.82rem;color:var(--text-muted)">Coming soon</p>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+import { initializeApp }                       from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }         from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+
+const app  = initializeApp({
+  apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
+  authDomain:        "roxheroesdb.firebaseapp.com",
+  projectId:         "roxheroesdb",
+  storageBucket:     "roxheroesdb.firebasestorage.app",
+  messagingSenderId: "473597354749",
+  appId:             "1:473597354749:web:2bb66b1db6c3dc1a241494",
+  measurementId:     "G-FWNYLFLRSK"
+});
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('user-email-display').textContent = user.email;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display  = 'flex';
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display  = 'none';
+  }
+});
+
+window.doLogin = async function () {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  const err   = document.getElementById('auth-error');
+  const btn   = document.getElementById('login-btn');
+  err.textContent = '';
+  if (!email || !pw) { err.textContent = 'Please enter email and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    const map = {
+      'auth/invalid-credential': 'Invalid email or password.',
+      'auth/user-not-found':     'No account found with that email.',
+      'auth/wrong-password':     'Incorrect password.',
+      'auth/too-many-requests':  'Too many attempts. Try again later.',
+      'auth/invalid-email':      'Invalid email address.',
+    };
+    err.textContent = map[e.code] || 'Sign in failed. Please try again.';
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+};
+
+window.doLogout = () => signOut(auth);
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.doLogin();
+});
+</script>
+</body>
+</html>

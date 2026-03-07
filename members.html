@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ROX-DB — Members</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #5b7fff;
+    --accent-hover: #4a6eff;
+    --danger: #e05252;
+    --danger-hover: #c94444;
+    --text: #e8eaf0;
+    --text-muted: #7a7f9a;
+    --success: #3ecf8e;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── AUTH ── */
+  #auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 40px 48px; width: 380px;
+  }
+  .auth-card h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .auth-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; outline: none;
+    transition: border-color .15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 120px; font-family: monospace; font-size: 0.85rem; }
+  .form-group select option { background: var(--surface2); }
+
+  .error-msg { color: var(--danger); font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+    border-radius: 7px; border: none; cursor: pointer; font-size: 0.9rem;
+    font-weight: 500; transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-danger:hover:not(:disabled)  { background: var(--danger-hover); }
+  .btn-ghost   { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled)   { background: var(--surface2); color: var(--text); }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ── APP ── */
+  #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-size: 1.1rem; font-weight: 700; }
+  header .logo span { color: var(--accent); }
+  header .user-area { display: flex; align-items: center; gap: 12px; }
+  header .user-email { color: var(--text-muted); font-size: 0.85rem; }
+
+  /* ── NAV ── */
+  #main-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; }
+  #main-nav a { padding: 12px 20px; color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+  #main-nav a:hover { color: var(--text); }
+  #main-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  main { padding: 28px 24px; flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
+
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .search-box {
+    flex: 1; min-width: 200px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 9px 14px; color: var(--text); font-size: 0.9rem; outline: none;
+    transition: border-color .15s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .toolbar-actions { display: flex; gap: 10px; margin-left: auto; }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; }
+
+  .row-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; padding: 5px 8px; border-radius: 6px;
+    color: var(--text-muted); font-size: 1rem; transition: background .15s, color .15s;
+  }
+  .icon-btn:hover.edit { background: #1e2a3a; color: var(--accent); }
+  .icon-btn:hover.del  { background: #3a1e1e; color: var(--danger); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  .loading-row td { text-align: center; padding: 40px; color: var(--text-muted); }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 32px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    position: relative;
+  }
+  .modal.wide { width: 680px; }
+  .modal h2 { font-size: 1.15rem; margin-bottom: 6px; }
+  .modal .subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 22px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 18px; background: none; border: none;
+    color: var(--text-muted); font-size: 1.3rem; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .preview-table-wrap { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: 7px; margin-top: 14px; }
+  .preview-table-wrap table thead th { background: var(--surface2); }
+  .preview-msg { font-size: 0.82rem; margin-top: 8px; }
+  .preview-msg.ok   { color: var(--success); }
+  .preview-msg.warn { color: #e0a050; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 12px 20px;
+    font-size: 0.9rem; z-index: 999; opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-ok  { border-color: var(--success); color: var(--success); }
+  #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>ROX<span style="color:var(--accent)">-DB</span></h1>
+    <p>Guild roster management</p>
+    <div class="error-msg" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app-screen">
+  <header>
+    <div class="logo">ROX<span>-DB</span></div>
+    <div class="user-area">
+      <span class="user-email" id="user-email-display"></span>
+      <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+  <nav id="main-nav">
+    <a href="index.html">Attendance</a>
+    <a href="members.html" class="active">Members</a>
+    <a href="events.html">Events</a>
+    <a href="distribution.html">Distribution</a>
+  </nav>
+
+  <main>
+    <div class="toolbar">
+      <input class="search-box" type="text" placeholder="Search by name or ID..." id="search-input" oninput="renderTable()" />
+      <div class="toolbar-actions">
+        <button class="btn btn-ghost" onclick="openImport()">Import Members</button>
+        <button class="btn btn-primary" onclick="openAdd()">+ Add Member</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('name')">Name <span class="sort-icon" id="sort-name">↕</span></th>
+            <th onclick="sortBy('characterId')">ID <span class="sort-icon" id="sort-characterId">↕</span></th>
+            <th onclick="sortBy('level')">Level <span class="sort-icon" id="sort-level">↕</span></th>
+            <th onclick="sortBy('weeklyContribution')">7-day Contrib <span class="sort-icon" id="sort-weeklyContribution">↕</span></th>
+            <th onclick="sortBy('attempts')">Attempts <span class="sort-icon" id="sort-attempts">↕</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="roster-body">
+          <tr class="loading-row"><td colspan="6">Loading roster...</td></tr>
+        </tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="empty-icon">🛡️</div>
+        <div>No members found</div>
+        <div style="font-size:.8rem;margin-top:6px">Import a list or add members manually</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── IMPORT MODAL ── -->
+<div class="modal-backdrop" id="import-modal">
+  <div class="modal wide">
+    <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
+    <h2>Import Members</h2>
+    <p class="subtitle">Paste tab-separated or comma-separated data — one member per line.<br/>
+    Columns: <code>Name, Level, 7-day Contribution, Attempts, ID</code></p>
+    <div class="form-group">
+      <label>Paste data</label>
+      <textarea id="import-text" placeholder="Alucard&#9;85&#9;15200&#9;42&#9;12345&#10;Merlin&#9;91&#9;18400&#9;38&#9;67890"></textarea>
+    </div>
+    <button class="btn btn-ghost" onclick="previewImport()">Preview</button>
+    <div id="preview-area"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('import-modal')">Cancel</button>
+      <button class="btn btn-success" id="confirm-import-btn" style="display:none" onclick="confirmImport()">Confirm Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD / EDIT MODAL ── -->
+<div class="modal-backdrop" id="member-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('member-modal')">✕</button>
+    <h2 id="member-modal-title">Add Member</h2>
+    <p class="subtitle" id="member-modal-sub">Fill in the member's details.</p>
+    <input type="hidden" id="edit-id" />
+    <div class="form-row">
+      <div class="form-group">
+        <label>Character Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Alucard" />
+      </div>
+      <div class="form-group">
+        <label>Character ID *</label>
+        <input type="text" id="f-characterId" placeholder="e.g. 12345" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Level</label>
+        <input type="number" id="f-level" placeholder="e.g. 85" min="1" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>7-day Contribution</label>
+        <input type="number" id="f-weeklyContribution" placeholder="e.g. 15200" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Attempts</label>
+        <input type="number" id="f-attempts" placeholder="e.g. 42" min="0" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('member-modal')">Cancel</button>
+      <button class="btn btn-primary" id="save-btn" onclick="saveMember()">Save Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONFIRM DELETE ── -->
+<div class="modal-backdrop" id="confirm-modal">
+  <div class="modal" style="width:360px">
+    <button class="modal-close" onclick="closeModal('confirm-modal')">✕</button>
+    <h2>Delete Member</h2>
+    <p style="margin:14px 0;color:var(--text-muted)">Remove <strong id="confirm-name" style="color:var(--danger)"></strong> from the roster? This cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot,
+         addDoc, setDoc, deleteDoc, doc,
+         serverTimestamp, query, orderBy }          from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+// ── FIREBASE INIT ──
+const firebaseConfig = {
+  apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
+  authDomain:        "roxheroesdb.firebaseapp.com",
+  projectId:         "roxheroesdb",
+  storageBucket:     "roxheroesdb.firebasestorage.app",
+  messagingSenderId: "473597354749",
+  appId:             "1:473597354749:web:2bb66b1db6c3dc1a241494",
+  measurementId:     "G-FWNYLFLRSK"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── STATE ──
+let members        = [];
+let sortCol        = 'name';
+let sortDir        = 1;
+let pendingImport  = [];
+let deleteTargetId = null;
+let unsubscribe    = null;
+
+// ── AUTH STATE ──
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('user-email-display').textContent = user.email;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display  = 'flex';
+    startListener();
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display  = 'none';
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    members = [];
+  }
+});
+
+// ── FIRESTORE LISTENER ──
+function startListener() {
+  const q = query(collection(db, 'members'), orderBy('name'));
+  unsubscribe = onSnapshot(q, snap => {
+    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTable();
+  }, err => {
+    showToast('Failed to load roster: ' + err.message, 'err');
+  });
+}
+
+// ── AUTH ──
+window.doLogin = async function () {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  const err   = document.getElementById('auth-error');
+  const btn   = document.getElementById('login-btn');
+  err.textContent = '';
+  if (!email || !pw) { err.textContent = 'Please enter email and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    err.textContent = friendlyAuthError(e.code);
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+};
+
+window.doLogout = () => signOut(auth);
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.doLogin();
+});
+
+function friendlyAuthError(code) {
+  const map = {
+    'auth/invalid-credential':    'Invalid email or password.',
+    'auth/user-not-found':        'No account found with that email.',
+    'auth/wrong-password':        'Incorrect password.',
+    'auth/too-many-requests':     'Too many attempts. Try again later.',
+    'auth/invalid-email':         'Invalid email address.',
+  };
+  return map[code] || 'Sign in failed. Please try again.';
+}
+
+// ── TABLE RENDER ──
+window.renderTable = function () {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  let rows = members.filter(m =>
+    (m.name || '').toLowerCase().includes(q) ||
+    (m.characterId || '').includes(q)
+  );
+
+  rows.sort((a, b) => {
+    let va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    return va < vb ? -sortDir : va > vb ? sortDir : 0;
+  });
+
+  const tbody = document.getElementById('roster-body');
+  const empty = document.getElementById('empty-state');
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    tbody.innerHTML = rows.map(m => `
+      <tr>
+        <td><strong>${esc(m.name)}</strong></td>
+        <td style="color:var(--text-muted);font-family:monospace">${esc(m.characterId)}</td>
+        <td>${m.level ?? '—'}</td>
+        <td>${(m.weeklyContribution ?? 0).toLocaleString()}</td>
+        <td>${m.attempts ?? '—'}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn edit" title="Edit"   onclick="openEdit('${m.id}')">✏️</button>
+            <button class="icon-btn del"  title="Delete" onclick="askDelete('${m.id}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  // sort icons
+  ['name','characterId','level','weeklyContribution','attempts'].forEach(c => {
+    const icon = document.getElementById('sort-' + c);
+    if (icon) icon.textContent = c === sortCol ? (sortDir === 1 ? '↑' : '↓') : '↕';
+    const th = document.querySelector(`[onclick="sortBy('${c}')"]`);
+    if (th) th.classList.toggle('sorted', c === sortCol);
+  });
+};
+
+window.sortBy = function (col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  renderTable();
+};
+
+// ── MODALS ──
+window.openModal  = id => document.getElementById(id).classList.add('open');
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+document.querySelectorAll('.modal-backdrop').forEach(bd =>
+  bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); })
+);
+
+// ── ADD / EDIT ──
+window.openAdd = function () {
+  document.getElementById('member-modal-title').textContent = 'Add Member';
+  document.getElementById('member-modal-sub').textContent   = 'Fill in the member\'s details.';
+  document.getElementById('edit-id').value = '';
+  ['name','characterId','level','weeklyContribution','attempts'].forEach(f =>
+    document.getElementById('f-' + f).value = ''
+  );
+  openModal('member-modal');
+};
+
+window.openEdit = function (id) {
+  const m = members.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('member-modal-title').textContent = 'Edit Member';
+  document.getElementById('member-modal-sub').textContent   = `Editing ${m.name}`;
+  document.getElementById('edit-id').value                  = id;
+  document.getElementById('f-name').value                   = m.name || '';
+  document.getElementById('f-characterId').value            = m.characterId || '';
+  document.getElementById('f-level').value                  = m.level ?? '';
+  document.getElementById('f-weeklyContribution').value     = m.weeklyContribution ?? '';
+  document.getElementById('f-attempts').value               = m.attempts ?? '';
+  openModal('member-modal');
+};
+
+window.saveMember = async function () {
+  const name        = document.getElementById('f-name').value.trim();
+  const characterId = document.getElementById('f-characterId').value.trim();
+  if (!name || !characterId) { showToast('Name and ID are required.', 'err'); return; }
+
+  const data = {
+    name,
+    characterId,
+    level:               parseInt(document.getElementById('f-level').value) || 0,
+    weeklyContribution:  parseInt(document.getElementById('f-weeklyContribution').value) || 0,
+    attempts:            parseInt(document.getElementById('f-attempts').value) || 0,
+    updatedAt:           serverTimestamp(),
+  };
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  try {
+    const editId = document.getElementById('edit-id').value;
+    if (editId) {
+      await setDoc(doc(db, 'members', editId), data, { merge: true });
+      showToast(`${name} updated.`, 'ok');
+    } else {
+      data.createdAt = serverTimestamp();
+      await addDoc(collection(db, 'members'), data);
+      showToast(`${name} added.`, 'ok');
+    }
+    closeModal('member-modal');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ── DELETE ──
+window.askDelete = function (id) {
+  const m = members.find(x => x.id === id);
+  if (!m) return;
+  deleteTargetId = id;
+  document.getElementById('confirm-name').textContent = m.name;
+  openModal('confirm-modal');
+};
+
+window.confirmDelete = async function () {
+  if (!deleteTargetId) return;
+  try {
+    await deleteDoc(doc(db, 'members', deleteTargetId));
+    closeModal('confirm-modal');
+    showToast('Member removed.', 'ok');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'err');
+  }
+  deleteTargetId = null;
+};
+
+// ── IMPORT ──
+window.openImport = function () {
+  document.getElementById('import-text').value = '';
+  document.getElementById('preview-area').innerHTML = '';
+  document.getElementById('confirm-import-btn').style.display = 'none';
+  pendingImport = [];
+  openModal('import-modal');
+};
+
+window.previewImport = function () {
+  const lines = document.getElementById('import-text').value
+    .split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) {
+    document.getElementById('preview-area').innerHTML = '<p class="preview-msg warn">Nothing to parse.</p>';
+    return;
+  }
+
+  const parsed = lines.map(parseLine).filter(Boolean);
+  const existingIds = new Set(members.map(m => m.characterId));
+  const dupes = parsed.filter(p => existingIds.has(p.characterId));
+
+  pendingImport = parsed;
+
+  let warn = '';
+  if (dupes.length)
+    warn = `<p class="preview-msg warn">⚠ ${dupes.length} duplicate ID(s) — existing records will be updated.</p>`;
+
+  const rows = parsed.map(p => `
+    <tr>
+      <td>${esc(p.name)}</td>
+      <td style="font-family:monospace">${esc(p.characterId)}</td>
+      <td>${p.level || '—'}</td>
+      <td>${(p.weeklyContribution || 0).toLocaleString()}</td>
+      <td>${p.attempts || '—'}</td>
+    </tr>`).join('');
+
+  document.getElementById('preview-area').innerHTML = `
+    <p class="preview-msg ok" style="margin-top:10px">✓ ${parsed.length} member(s) parsed.</p>
+    ${warn}
+    <div class="preview-table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>ID</th><th>Level</th><th>Contrib</th><th>Attempts</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('confirm-import-btn').style.display = parsed.length ? 'inline-flex' : 'none';
+};
+
+window.confirmImport = async function () {
+  if (!pendingImport.length) return;
+  const btn = document.getElementById('confirm-import-btn');
+  btn.disabled = true; btn.textContent = 'Importing...';
+
+  const existingIds = new Map(members.map(m => [m.characterId, m.id]));
+
+  try {
+    await Promise.all(pendingImport.map(p => {
+      const data = { ...p, updatedAt: serverTimestamp() };
+      if (existingIds.has(p.characterId)) {
+        return setDoc(doc(db, 'members', existingIds.get(p.characterId)), data, { merge: true });
+      } else {
+        data.createdAt = serverTimestamp();
+        return addDoc(collection(db, 'members'), data);
+      }
+    }));
+    closeModal('import-modal');
+    showToast(`${pendingImport.length} member(s) imported.`, 'ok');
+    pendingImport = [];
+  } catch (e) {
+    showToast('Import failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Confirm Import';
+  }
+};
+
+function parseLine(line) {
+  const sep   = line.includes('\t') ? '\t' : ',';
+  const parts = line.split(sep).map(s => s.trim());
+  if (!parts[0]) return null;
+  return {
+    name:               parts[0] || '',
+    level:              parseInt(parts[1]) || 0,
+    weeklyContribution: parseInt(parts[2]) || 0,
+    attempts:           parseInt(parts[3]) || 0,
+    characterId:        parts[4] || '',
+  };
+}
+
+// ── UTILS ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+window.showToast = function (msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `show toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+};
+</script>
+</body>
+</html>
