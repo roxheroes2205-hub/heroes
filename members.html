@@ -147,6 +147,61 @@
   #toast.show { opacity: 1; transform: translateY(0); }
   #toast.toast-ok  { border-color: var(--success); color: var(--success); }
   #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
+
+  /* ── WORKFLOW ── */
+  .workflow-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 24px; margin-bottom: 20px;
+  }
+  .workflow-step { margin-bottom: 20px; }
+  .workflow-step:last-child { margin-bottom: 0; }
+  .workflow-step h3 { font-size: 0.9rem; margin-bottom: 8px; color: var(--accent); }
+  .workflow-step p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+  .workflow-step textarea {
+    width: 100%; min-height: 120px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 12px; color: var(--text); font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.85rem; resize: vertical; outline: none; transition: border-color .15s;
+  }
+  .workflow-step textarea:focus { border-color: var(--accent); }
+  .step-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  .staging-section { margin-top: 20px; }
+  .staging-section h3 { font-size: 0.95rem; margin-bottom: 12px; }
+
+  .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .status-dot.matched { background: var(--success); }
+  .status-dot.unmatched { background: var(--danger); }
+  .status-dot.uncertain { background: #f0ad4e; }
+  .uncertain-note { font-size: 0.78rem; color: #f0ad4e; margin-top: 2px; }
+
+  .search-select { position: relative; display: inline-block; }
+  .search-select input {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 8px; color: var(--text); font-size: 0.85rem; outline: none; width: 240px;
+  }
+  .search-select input:focus { border-color: var(--accent); }
+  .search-dropdown {
+    position: absolute; top: 100%; left: 0; min-width: 300px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+    max-height: 220px; overflow-y: auto; z-index: 50; display: none; margin-top: 2px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .search-dropdown.open { display: block; }
+  .search-dropdown-item {
+    padding: 7px 10px; cursor: pointer; font-size: 0.83rem;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: background .1s;
+  }
+  .search-dropdown-item:hover { background: var(--surface2); }
+  .search-dropdown-item .item-id { color: var(--text-muted); font-size: 0.78rem; margin-left: 12px; white-space: nowrap; }
+
+  .save-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+  .save-bar .save-info { font-size: 0.85rem; color: var(--text-muted); }
+
+  .change-val { font-size: 0.78rem; color: var(--text-muted); }
+  .change-val .old-val { text-decoration: line-through; color: var(--danger); margin-right: 4px; }
+  .change-val .new-val { color: var(--success); }
+  .change-val .same-val { color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -173,7 +228,52 @@
       <input class="search-box" type="text" placeholder="Search by name or ID..." id="search-input" oninput="renderTable()" />
       <div class="toolbar-actions" id="admin-toolbar" style="display:none">
         <button class="btn btn-ghost" onclick="openImport()">Import Members</button>
+        <button class="btn btn-ghost" onclick="toggleWorkflow()" id="workflow-toggle-btn">Update via Claude</button>
         <button class="btn btn-primary" onclick="openAdd()">+ Add Member</button>
+      </div>
+    </div>
+
+    <!-- Claude Workflow Section (admin only) -->
+    <div class="workflow-section" id="workflow-section" style="display:none">
+      <div class="workflow-step">
+        <h3>Step 1 — Copy Prompt</h3>
+        <p>Copy the parsing prompt to your clipboard, then paste it into <strong style="color:var(--text)">claude.ai</strong> along with your guild roster screenshot.</p>
+        <button class="btn btn-primary" onclick="copyMemberPrompt()">Copy Prompt to Clipboard</button>
+      </div>
+      <hr class="step-divider" />
+      <div class="workflow-step">
+        <h3>Step 2 — Paste Response</h3>
+        <p>After Claude replies with JSON, copy the entire response and paste it here.</p>
+        <textarea id="response-input" placeholder="Paste Claude's JSON response here..."></textarea>
+        <button class="btn btn-primary" onclick="processMemberResponse()" id="process-btn">Process Response</button>
+      </div>
+    </div>
+
+    <!-- Staging table for member updates (admin only) -->
+    <div class="staging-section" id="staging-section" style="display:none">
+      <h3>Parsed Member Data — <span id="staging-count">0</span> rows</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name (from image)</th>
+              <th>Level</th>
+              <th>7-day Contrib</th>
+              <th>Attempts</th>
+              <th>Status</th>
+              <th>Matched Member</th>
+              <th style="width:50px"></th>
+            </tr>
+          </thead>
+          <tbody id="staging-body"></tbody>
+        </table>
+      </div>
+      <div class="save-bar">
+        <span class="save-info" id="save-info"></span>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" onclick="clearStaging()">Clear</button>
+          <button class="btn btn-success" id="save-staging-btn" onclick="saveUpdates()" disabled>Save Updates</button>
+        </div>
       </div>
     </div>
 
@@ -294,6 +394,20 @@
   </div>
 </div>
 
+<!-- ── UPDATE CONFIRMATION MODAL ── -->
+<div class="modal-backdrop" id="overwrite-modal">
+  <div class="modal" style="width:480px">
+    <button class="modal-close" onclick="closeModal('overwrite-modal')">✕</button>
+    <h2>Update Member Data?</h2>
+    <p class="subtitle" id="overwrite-msg"></p>
+    <div id="overwrite-list" style="max-height:240px;overflow-y:auto;margin:12px 0;font-size:0.85rem;color:var(--text-muted)"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('overwrite-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmMemberOverwrite()">Confirm Updates</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── TOAST ── -->
 <div id="toast"></div>
 
@@ -328,6 +442,7 @@ let pendingImport  = [];
 let deleteTargetId = null;
 let unsubscribe    = null;
 let isAdmin        = false;
+let stagingRows    = [];
 
 // ── AUTH STATE ──
 onAuthStateChanged(auth, user => {
@@ -642,6 +757,363 @@ window.showToast = function (msg, type = 'ok') {
   t.className   = `show toast-${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.className = '', 2800);
+};
+
+// ── CLAUDE WORKFLOW: TOGGLE ──
+window.toggleWorkflow = function () {
+  const section = document.getElementById('workflow-section');
+  const btn = document.getElementById('workflow-toggle-btn');
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    btn.textContent = 'Hide Claude Workflow';
+  } else {
+    section.style.display = 'none';
+    btn.textContent = 'Update via Claude';
+  }
+};
+
+// ── CLAUDE WORKFLOW: BUILD PROMPT ──
+function buildMemberPrompt() {
+  const memberList = members.map(m => ({
+    name: m.name,
+    characterId: m.characterId || '',
+  }));
+
+  return `Here is the list of known guild members:\n${JSON.stringify(memberList)}\n\nParse this guild roster / member list screenshot.\nExtract every row. For each row return:\n  { "name": <value from Members/Name column>, "level": <number from Level column>, "weeklyContribution": <number from 7-day Contribution column>, "attempts": <number from Attempts column>, "expected_character_id": <characterId or null>, "uncertain": true/false, "note": "<reason or null>" }\n\nReturn the JSON array first.\nPreserve the name exactly as displayed, including special characters.\nFor expected_character_id: match against the member list provided. If the name is an exact or close match (accounting for capitalisation, symbols, or minor typos), set expected_character_id to that member's characterId. If you are not confident in the match, set expected_character_id to null.\nFor uncertain: set to true if the name was hard to read, the values were unclear, the member match is a guess, or anything else looks off. Set to false if you are confident.\nFor note: if uncertain is true, briefly explain what looked wrong (e.g. "name partially obscured", "level might be 89 or 90", "close match but not sure"). Set to null if uncertain is false.\nReturn rows in the exact order they appear in the image, top to bottom.\nDo not reorder, sort, or deduplicate rows.\n\nAfter the JSON array, list any entries you flagged as uncertain and explain what looked incorrect so the user can verify them.`;
+}
+
+window.copyMemberPrompt = function () {
+  if (members.length === 0) {
+    showToast('No members loaded yet. Wait for roster to load.', 'err');
+    return;
+  }
+  const prompt = buildMemberPrompt();
+  navigator.clipboard.writeText(prompt).then(() => {
+    showToast('Prompt copied! Paste it into claude.ai with your screenshot.', 'ok');
+  }).catch(() => {
+    showToast('Failed to copy — check browser permissions.', 'err');
+  });
+};
+
+// ── CLAUDE WORKFLOW: JSON EXTRACTION ──
+function extractJsonArray(text) {
+  const stripped = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+  try { const p = JSON.parse(stripped.trim()); if (Array.isArray(p)) return p; } catch (_) {}
+  const start = stripped.indexOf('[');
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < stripped.length; i++) {
+    if (stripped[i] === '[') depth++;
+    else if (stripped[i] === ']') { depth--; if (depth === 0) {
+      try { return JSON.parse(stripped.substring(start, i + 1)); } catch (_) { return null; }
+    }}
+  }
+  return null;
+}
+
+// ── CLAUDE WORKFLOW: PROCESS RESPONSE ──
+window.processMemberResponse = function () {
+  const raw = document.getElementById('response-input').value.trim();
+  if (!raw) { showToast('Please paste Claude\'s JSON response first.', 'err'); return; }
+
+  const parsed = extractJsonArray(raw);
+  if (!parsed) {
+    showToast('Could not find a valid JSON array. Make sure you copied the full response.', 'err');
+    return;
+  }
+
+  let uncertainCount = 0;
+  parsed.forEach(row => {
+    const charId = row.expected_character_id || null;
+    const member = charId ? members.find(m => m.characterId === charId) : null;
+    const isUncertain = row.uncertain === true;
+    if (isUncertain) uncertainCount++;
+
+    stagingRows.push({
+      nameFromImage:      row.name || '',
+      level:              parseInt(row.level) || 0,
+      weeklyContribution: parseInt(row.weeklyContribution) || 0,
+      attempts:           parseInt(row.attempts) || 0,
+      status:             member ? 'matched' : 'unmatched',
+      characterId:        member ? member.characterId : null,
+      memberName:         member ? member.name : null,
+      uncertain:          isUncertain,
+      note:               isUncertain ? (row.note || 'Flagged as uncertain') : null,
+    });
+  });
+
+  document.getElementById('response-input').value = '';
+  renderStaging();
+  const msg = uncertainCount > 0
+    ? `${parsed.length} row(s) parsed — ${uncertainCount} flagged as uncertain`
+    : `${parsed.length} row(s) parsed successfully.`;
+  showToast(msg, uncertainCount > 0 ? 'err' : 'ok');
+};
+
+// ── STAGING TABLE ──
+function renderStaging() {
+  const section = document.getElementById('staging-section');
+  const tbody   = document.getElementById('staging-body');
+
+  if (stagingRows.length === 0) { section.style.display = 'none'; return; }
+  if (isAdmin) section.style.display = 'block';
+  document.getElementById('staging-count').textContent = stagingRows.length;
+
+  tbody.innerHTML = stagingRows.map((row, idx) => {
+    const dot = `<span class="status-dot ${row.status}"></span>`;
+    const label = row.status === 'matched' ? 'Matched' : 'Unmatched';
+    const warningDot = row.uncertain ? '<span class="status-dot uncertain" title="Uncertain"></span>' : '';
+    const noteHtml = row.note ? `<div class="uncertain-note">${esc(row.note)}</div>` : '';
+
+    let levelHtml = String(row.level);
+    let contribHtml = row.weeklyContribution.toLocaleString();
+    let attemptsHtml = String(row.attempts);
+
+    if (row.characterId) {
+      const existing = members.find(m => m.characterId === row.characterId);
+      if (existing) {
+        levelHtml = formatDiff(existing.level ?? 0, row.level);
+        contribHtml = formatDiff(existing.weeklyContribution ?? 0, row.weeklyContribution, true);
+        attemptsHtml = formatDiff(existing.attempts ?? 0, row.attempts);
+      }
+    }
+
+    return `<tr>
+      <td>${esc(row.nameFromImage)}${noteHtml}</td>
+      <td>${levelHtml}</td>
+      <td>${contribHtml}</td>
+      <td>${attemptsHtml}</td>
+      <td>${warningDot}${dot}${label}</td>
+      <td>
+        <div class="search-select" data-row-idx="${idx}">
+          <input type="text" class="search-input" placeholder="Search name or ID..." />
+          <div class="search-dropdown"></div>
+        </div>
+      </td>
+      <td><button class="btn btn-ghost" style="padding:4px 8px;font-size:0.78rem;color:var(--danger)" onclick="deleteStagingRow(${idx})" title="Remove row">&#x2715;</button></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.search-select').forEach(wrapper => {
+    const idx = parseInt(wrapper.dataset.rowIdx);
+    const row = stagingRows[idx];
+    const input = wrapper.querySelector('.search-input');
+    if (row.characterId && row.memberName) {
+      input.value = `${row.memberName} (${row.characterId})`;
+    }
+  });
+
+  updateSaveState();
+}
+
+function formatDiff(oldVal, newVal, useLocale = false) {
+  const fmt = v => useLocale ? v.toLocaleString() : String(v);
+  if (oldVal === newVal) {
+    return `<span class="change-val"><span class="same-val">${fmt(newVal)}</span></span>`;
+  }
+  return `<span class="change-val"><span class="old-val">${fmt(oldVal)}</span><span class="new-val">${fmt(newVal)}</span></span>`;
+}
+
+window.resolveRow = function (idx, characterId) {
+  if (idx < 0 || idx >= stagingRows.length) return;
+  if (characterId) {
+    const m = members.find(x => x.characterId === characterId);
+    stagingRows[idx].characterId = characterId;
+    stagingRows[idx].memberName  = m ? m.name : null;
+    stagingRows[idx].status      = 'matched';
+  } else {
+    stagingRows[idx].characterId = null;
+    stagingRows[idx].memberName  = null;
+    stagingRows[idx].status      = 'unmatched';
+  }
+  renderStaging();
+};
+
+function updateSaveState() {
+  const allMatched = stagingRows.length > 0 && stagingRows.every(r => r.status === 'matched');
+  document.getElementById('save-staging-btn').disabled = !allMatched;
+
+  const unmatched = stagingRows.filter(r => r.status !== 'matched').length;
+  const info = document.getElementById('save-info');
+  if (unmatched > 0) {
+    info.textContent = `${unmatched} unmatched row(s) — resolve all to save`;
+    info.style.color = 'var(--danger)';
+  } else if (stagingRows.length > 0) {
+    info.textContent = `All ${stagingRows.length} rows matched — ready to save`;
+    info.style.color = 'var(--success)';
+  } else {
+    info.textContent = '';
+  }
+}
+
+window.deleteStagingRow = function (idx) {
+  if (idx < 0 || idx >= stagingRows.length) return;
+  stagingRows.splice(idx, 1);
+  renderStaging();
+};
+
+window.clearStaging = function () {
+  stagingRows = [];
+  renderStaging();
+};
+
+// ── SEARCHABLE MEMBER DROPDOWN (STAGING) ──
+const stagingBodyEl = document.getElementById('staging-body');
+
+stagingBodyEl.addEventListener('focus', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  e.target.select();
+  showMemberDropdown(e.target, '');
+}, true);
+
+stagingBodyEl.addEventListener('input', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  showMemberDropdown(e.target, e.target.value);
+});
+
+stagingBodyEl.addEventListener('mousedown', e => {
+  const item = e.target.closest('.search-dropdown-item');
+  if (!item) return;
+  e.preventDefault();
+  const wrapper = item.closest('.search-select');
+  const idx = parseInt(wrapper.dataset.rowIdx);
+  const characterId = item.dataset.characterId || '';
+  window.resolveRow(idx, characterId);
+});
+
+stagingBodyEl.addEventListener('keydown', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  const wrapper = e.target.closest('.search-select');
+  const dropdown = wrapper.querySelector('.search-dropdown');
+  if (e.key === 'Enter') {
+    const first = dropdown.querySelector('.search-dropdown-item[data-character-id]:not([data-character-id=""])');
+    if (first) {
+      const idx = parseInt(wrapper.dataset.rowIdx);
+      window.resolveRow(idx, first.dataset.characterId);
+    }
+    dropdown.classList.remove('open');
+    e.target.blur();
+  } else if (e.key === 'Escape') {
+    dropdown.classList.remove('open');
+    e.target.blur();
+  }
+});
+
+stagingBodyEl.addEventListener('blur', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  const target = e.target;
+  setTimeout(() => {
+    const wrapper = target.closest('.search-select');
+    if (!wrapper) return;
+    wrapper.querySelector('.search-dropdown').classList.remove('open');
+    const idx = parseInt(wrapper.dataset.rowIdx);
+    const row = stagingRows[idx];
+    target.value = (row && row.characterId && row.memberName)
+      ? `${row.memberName} (${row.characterId})`
+      : '';
+  }, 150);
+}, true);
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-select')) {
+    document.querySelectorAll('.search-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+function showMemberDropdown(input, searchText) {
+  const wrapper = input.closest('.search-select');
+  const dropdown = wrapper.querySelector('.search-dropdown');
+  const search = searchText.toLowerCase().trim();
+
+  document.querySelectorAll('.search-dropdown.open').forEach(d => {
+    if (d !== dropdown) d.classList.remove('open');
+  });
+
+  const filtered = members
+    .filter(m => {
+      if (!search) return true;
+      return (m.name || '').toLowerCase().includes(search) ||
+             (m.characterId || '').toLowerCase().includes(search);
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (filtered.length === 0) {
+    dropdown.innerHTML = '<div style="padding:8px 10px;color:var(--text-muted);font-size:0.83rem">No matches found</div>';
+  } else {
+    dropdown.innerHTML =
+      '<div class="search-dropdown-item" data-character-id="" style="color:var(--text-muted)">— None —</div>' +
+      filtered.map(m =>
+        `<div class="search-dropdown-item" data-character-id="${esc(m.characterId)}">
+          <span>${esc(m.name)}</span>
+          <span class="item-id">${esc(m.characterId)}</span>
+        </div>`
+      ).join('');
+  }
+
+  dropdown.classList.add('open');
+}
+
+// ── SAVE MEMBER UPDATES ──
+window.saveUpdates = async function () {
+  if (stagingRows.length === 0) return;
+  if (stagingRows.some(r => r.status !== 'matched')) {
+    showToast('All rows must be matched before saving.', 'err');
+    return;
+  }
+
+  const changes = stagingRows.map(row => {
+    const existing = members.find(m => m.characterId === row.characterId);
+    if (!existing) return null;
+    const diffs = [];
+    if ((existing.level ?? 0) !== row.level) diffs.push(`Level: ${existing.level ?? 0} → ${row.level}`);
+    if ((existing.weeklyContribution ?? 0) !== row.weeklyContribution) diffs.push(`Contrib: ${(existing.weeklyContribution ?? 0).toLocaleString()} → ${row.weeklyContribution.toLocaleString()}`);
+    if ((existing.attempts ?? 0) !== row.attempts) diffs.push(`Attempts: ${existing.attempts ?? 0} → ${row.attempts}`);
+    return { name: existing.name, diffs, memberId: existing.id };
+  }).filter(Boolean);
+
+  const withChanges = changes.filter(c => c.diffs.length > 0);
+
+  if (withChanges.length === 0) {
+    showToast('No changes detected — all values already match.', 'ok');
+    return;
+  }
+
+  document.getElementById('overwrite-msg').textContent =
+    `${withChanges.length} member(s) will be updated with new values.`;
+  document.getElementById('overwrite-list').innerHTML = withChanges.map(c =>
+    `<div style="margin-bottom:6px"><strong style="color:var(--text)">${esc(c.name)}</strong><br/>${c.diffs.join(', ')}</div>`
+  ).join('');
+  openModal('overwrite-modal');
+};
+
+window.confirmMemberOverwrite = async function () {
+  closeModal('overwrite-modal');
+  const btn = document.getElementById('save-staging-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    await Promise.all(stagingRows.map(row => {
+      const existing = members.find(m => m.characterId === row.characterId);
+      if (!existing) return Promise.resolve();
+
+      return setDoc(doc(db, 'members', existing.id), {
+        level:              row.level,
+        weeklyContribution: row.weeklyContribution,
+        attempts:           row.attempts,
+        updatedAt:          serverTimestamp(),
+      }, { merge: true });
+    }));
+
+    showToast(`${stagingRows.length} member(s) updated.`, 'ok');
+    stagingRows = [];
+    renderStaging();
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Updates';
+  }
 };
 </script>
 </body>
