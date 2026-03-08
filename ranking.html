@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HEROES — Ranking</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #5b7fff;
+    --accent-hover: #4a6eff;
+    --danger: #e05252;
+    --text: #e8eaf0;
+    --text-muted: #7a7f9a;
+    --success: #3ecf8e;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+  .form-group input, .form-group select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; outline: none;
+    transition: border-color .15s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
+  .error-msg { color: var(--danger); font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+    border-radius: 7px; border: none; cursor: pointer; font-size: 0.9rem;
+    font-weight: 500; transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+  .btn-full { width: 100%; justify-content: center; }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-danger:hover:not(:disabled) { background: #c94444; }
+  .btn-success { background: var(--success); color: #000; }
+
+  #app-screen { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-size: 1.1rem; font-weight: 700; }
+  header .logo span { color: var(--accent); }
+  header .user-area { display: flex; align-items: center; gap: 12px; }
+  header .user-email { color: var(--text-muted); font-size: 0.85rem; }
+
+  #main-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; }
+  #main-nav a { padding: 12px 20px; color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+  #main-nav a:hover { color: var(--text); }
+  #main-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  main { padding: 28px 24px; flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 12px 20px;
+    font-size: 0.9rem; z-index: 999; opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-ok  { border-color: var(--success); color: var(--success); }
+  #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 32px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    position: relative;
+  }
+  .modal h2 { font-size: 1.15rem; margin-bottom: 6px; }
+  .modal .subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 22px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 18px; background: none; border: none;
+    color: var(--text-muted); font-size: 1.3rem; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; }
+
+  .results-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .results-toolbar h3 { margin: 0; font-size: 0.95rem; white-space: nowrap; }
+  .results-search {
+    flex: 1; min-width: 180px; max-width: 320px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none;
+    transition: border-color .15s;
+  }
+  .results-search:focus { border-color: var(--accent); }
+  .results-section { margin-bottom: 20px; }
+  .results-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+
+  .row-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; padding: 5px 8px; border-radius: 6px;
+    color: var(--text-muted); font-size: 1rem; transition: background .15s, color .15s;
+  }
+  .icon-btn:hover.edit { background: #1e2a3a; color: var(--accent); }
+  .icon-btn:hover.del  { background: #3a1e1e; color: var(--danger); }
+
+  .save-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+  .save-bar .save-info { font-size: 0.85rem; color: var(--text-muted); }
+
+  .staging-section { margin-top: 20px; }
+  .staging-section h3 { font-size: 0.95rem; margin-bottom: 12px; }
+
+  .processing-indicator { display: flex; align-items: center; gap: 10px; padding: 14px 0; color: var(--accent); font-size: 0.9rem; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── EVENT BAR ── */
+  .event-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 20px;
+  }
+  .event-bar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .event-bar-header h3 { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+
+  /* ── CALENDAR (Mon-Sun, with week labels) ── */
+  .calendar-nav {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .calendar-nav .month-label { font-size: 1rem; font-weight: 600; color: var(--text); }
+  .calendar-nav button {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); cursor: pointer; width: 32px; height: 32px; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s;
+  }
+  .calendar-nav button:hover { background: var(--surface2); color: var(--text); }
+
+  .calendar-weekdays {
+    display: grid; grid-template-columns: 42px repeat(7, 1fr); text-align: center;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); margin-bottom: 4px; padding: 0 2px;
+  }
+
+  .calendar-grid {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .calendar-week-row {
+    display: grid; grid-template-columns: 42px repeat(7, 1fr); gap: 3px;
+    border-radius: 6px; border: 2px solid transparent; padding: 1px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .calendar-week-row:hover { background: rgba(91,127,255,0.06); }
+  .calendar-week-row.selected { border-color: var(--accent); background: rgba(91,127,255,0.08); }
+
+  .week-label {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 600; color: var(--text-muted); gap: 2px;
+    border-radius: 6px; padding: 4px 2px; min-height: 60px;
+  }
+  .calendar-week-row.selected .week-label { color: var(--accent); }
+  .week-label .week-saved { color: var(--success); font-size: 0.7rem; }
+
+  .calendar-day {
+    min-height: 60px; border-radius: 6px; padding: 4px 5px;
+    font-size: 0.78rem; color: var(--text-muted); position: relative;
+    background: var(--surface2); border: 1px solid transparent; transition: border-color .15s;
+  }
+  .calendar-day.empty { background: transparent; border: none; }
+  .calendar-day.outside { background: var(--surface); opacity: 0.4; }
+  .calendar-day.today { border-color: var(--accent); }
+  .calendar-day .day-num { display: block; margin-bottom: 3px; font-weight: 500; }
+  .calendar-day.today .day-num { color: var(--accent); font-weight: 700; }
+
+  .calendar-day .event-pills { display: flex; flex-direction: column; gap: 2px; }
+  .event-pill {
+    display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem;
+    font-weight: 600; text-align: center; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .event-pill.type-KVM  { background: var(--accent); color: #fff; }
+  .event-pill.type-xKVM { background: #7c5bff; color: #fff; }
+  .event-pill.type-AA   { background: var(--success); color: #000; }
+  .event-pill.type-GvG  { background: #f0ad4e; color: #000; }
+  .event-pill.type-xGvG { background: var(--danger); color: #fff; }
+
+  /* ── SETTINGS MODAL ── */
+  .config-grid {
+    display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 8px 12px; align-items: center;
+    margin-bottom: 16px;
+  }
+  .config-grid .config-label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+  .config-grid .config-header { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .config-grid input, .config-grid select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 7px 10px; color: var(--text); font-size: 0.85rem; outline: none; width: 100%;
+  }
+  .config-grid input:focus, .config-grid select:focus { border-color: var(--accent); }
+  .config-separator { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .rank-config { display: flex; gap: 16px; flex-wrap: wrap; }
+  .rank-config .form-group { flex: 1; min-width: 140px; margin-bottom: 0; }
+
+  /* ── QUALIFICATION INDICATORS ── */
+  .qual-check { color: var(--success); }
+  .qual-fail  { color: var(--danger); }
+  .qual-cell { text-align: center; font-size: 0.85rem; }
+  .event-detail { font-size: 0.78rem; line-height: 1.6; white-space: nowrap; }
+  .event-detail .qual-check, .event-detail .qual-fail { font-size: 0.82rem; }
+  .detail-muted { color: var(--text-muted); font-style: italic; }
+  .detail-total { font-size: 0.8rem; margin-top: 2px; padding-top: 3px; border-top: 1px solid var(--border); }
+
+  /* ── TIER BADGES ── */
+  .tier-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .tier-badge.legend { background: #f0ad4e; color: #000; }
+  .tier-badge.elite  { background: #7c5bff; color: #fff; }
+  .tier-badge.rising { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* ── EDITABLE STAGING CELL ── */
+  .editable-cell {
+    cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background .15s;
+  }
+  .editable-cell:hover { background: var(--surface2); }
+  .editable-cell input {
+    background: var(--surface2); border: 1px solid var(--accent); border-radius: 4px;
+    padding: 2px 6px; color: var(--text); font-size: 0.85rem; width: 60px; outline: none;
+  }
+
+  /* ── GENERATE SECTION ── */
+  .generate-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+
+  @media (max-width: 600px) {
+    .calendar-day { min-height: 48px; padding: 3px; }
+    .event-pill { font-size: 0.6rem; padding: 1px 4px; }
+    .calendar-weekdays { grid-template-columns: 32px repeat(7, 1fr); }
+    .calendar-week-row { grid-template-columns: 32px repeat(7, 1fr); }
+    .week-label { font-size: 0.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app-screen">
+  <header>
+    <div class="logo">HEROES</div>
+    <div class="user-area">
+      <span class="user-email" id="user-email-display"></span>
+      <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
+      <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
+    </div>
+  </header>
+  <nav id="main-nav">
+    <a href="index.html">Attendance</a>
+    <a href="members.html">Members</a>
+    <a href="events.html">Events</a>
+    <a href="distribution.html">Distribution</a>
+    <a href="ranking.html" class="active">Ranking</a>
+  </nav>
+
+  <main>
+    <!-- Calendar with week selection -->
+    <div class="event-bar">
+      <div class="event-bar-header">
+        <h3>Guild Points</h3>
+        <button class="btn btn-ghost admin-only" style="display:none; padding:6px 10px; font-size:0.82rem;" onclick="openModal('settings-modal')">&#9881; Settings</button>
+      </div>
+      <div class="calendar-nav">
+        <button onclick="navigateMonth(-1)">&#9664;</button>
+        <span class="month-label" id="calendar-month-label"></span>
+        <button onclick="navigateMonth(1)">&#9654;</button>
+      </div>
+      <div class="calendar-weekdays">
+        <span></span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+
+    <!-- Weekly results (visible to all when week selected) -->
+    <div class="results-section" id="results-section" style="display:none">
+      <div class="results-toolbar">
+        <h3><span id="results-week-label"></span> — <span id="results-count">0</span> members</h3>
+        <input class="results-search" type="text" placeholder="Search by name..." id="results-search-input" oninput="renderWeeklyResults()" />
+        <button class="btn btn-danger admin-only" id="delete-week-btn" style="display:none" onclick="openDeleteWeek()">Delete Week</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortResultsBy('memberName')">Member <span class="sort-icon" id="rsort-memberName">&#8597;</span></th>
+              <th onclick="sortResultsBy('KVM')">KVM <span class="sort-icon" id="rsort-KVM">&#8597;</span></th>
+              <th onclick="sortResultsBy('xKVM')">xKVM <span class="sort-icon" id="rsort-xKVM">&#8597;</span></th>
+              <th onclick="sortResultsBy('AA')">AA <span class="sort-icon" id="rsort-AA">&#8597;</span></th>
+              <th onclick="sortResultsBy('GvG')">GvG <span class="sort-icon" id="rsort-GvG">&#8597;</span></th>
+              <th onclick="sortResultsBy('xGvG')">xGvG <span class="sort-icon" id="rsort-xGvG">&#8597;</span></th>
+              <th onclick="sortResultsBy('totalHeroPoints')">Total <span class="sort-icon" id="rsort-totalHeroPoints">&#8597;</span></th>
+              <th id="results-actions-th" class="admin-only" style="display:none"></th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+        <div class="results-empty" id="results-empty" style="display:none">No hero points generated for this week yet</div>
+      </div>
+      <!-- Generate button (admin only, when no saved data) -->
+      <div class="generate-bar admin-only" id="generate-bar" style="display:none">
+        <button class="btn btn-primary" onclick="generateWeeklyPoints()" id="generate-btn">&#9889; Generate Hero Points</button>
+      </div>
+    </div>
+
+    <!-- Staging table (admin only, shown after Generate) -->
+    <div class="staging-section admin-only" id="staging-section" style="display:none">
+      <h3>Generated Hero Points — <span id="staging-count">0</span> members</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>KVM</th>
+              <th>xKVM</th>
+              <th>AA</th>
+              <th>GvG</th>
+              <th>xGvG</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="staging-body"></tbody>
+        </table>
+      </div>
+      <div class="save-bar">
+        <span class="save-info" id="save-info"></span>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" onclick="clearStaging()">Clear</button>
+          <button class="btn btn-success" id="save-btn" onclick="saveWeeklyPoints()">Save Hero Points</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-backdrop" id="login-modal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeModal('login-modal')">&#10005;</button>
+    <h2>Admin Sign In</h2>
+    <p class="subtitle">Sign in to manage guild rankings.</p>
+    <div class="error-msg" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── SETTINGS MODAL ── -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal" style="width:560px">
+    <button class="modal-close" onclick="closeModal('settings-modal')">&#10005;</button>
+    <h2>Hero Point Settings</h2>
+    <p class="subtitle">Configure point values, qualification thresholds, and modes per event type.</p>
+
+    <div class="config-grid">
+      <span class="config-header">Type</span>
+      <span class="config-header">Hero Pts</span>
+      <span class="config-header">Threshold</span>
+      <span class="config-header">Mode</span>
+
+      <span class="config-label">KVM</span>
+      <input type="number" id="cfg-pts-KVM" min="0" value="10" />
+      <input type="number" id="cfg-thresh-KVM" min="0" value="3" />
+      <select id="cfg-mode-KVM"><option value="differential">Differential</option><option value="absolute">Absolute</option></select>
+
+      <span class="config-label">xKVM</span>
+      <input type="number" id="cfg-pts-xKVM" min="0" value="10" />
+      <input type="number" id="cfg-thresh-xKVM" min="0" value="3" />
+      <select id="cfg-mode-xKVM"><option value="differential">Differential</option><option value="absolute">Absolute</option></select>
+
+      <span class="config-label">AA</span>
+      <input type="number" id="cfg-pts-AA" min="0" value="20" />
+      <input type="number" id="cfg-thresh-AA" min="0" value="200" />
+      <select id="cfg-mode-AA"><option value="absolute" selected>Absolute</option><option value="differential">Differential</option></select>
+
+      <span class="config-label">GvG</span>
+      <input type="number" id="cfg-pts-GvG" min="0" value="50" />
+      <input type="number" id="cfg-thresh-GvG" min="0" value="3" />
+      <select id="cfg-mode-GvG"><option value="absolute" selected>Absolute</option><option value="differential">Differential</option></select>
+
+      <span class="config-label">xGvG</span>
+      <input type="number" id="cfg-pts-xGvG" min="0" value="50" />
+      <input type="number" id="cfg-thresh-xGvG" min="0" value="3" />
+      <select id="cfg-mode-xGvG"><option value="absolute" selected>Absolute</option><option value="differential">Differential</option></select>
+    </div>
+
+    <hr class="config-separator" />
+    <h3 style="font-size:0.85rem; margin-bottom:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em;">Rank Tiers (Monthly)</h3>
+    <div class="rank-config">
+      <div class="form-group">
+        <label>Legend (min pts)</label>
+        <input type="number" id="cfg-tier-legend" min="0" value="440" />
+      </div>
+      <div class="form-group">
+        <label>Elite (min pts)</label>
+        <input type="number" id="cfg-tier-elite" min="0" value="340" />
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('settings-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERWRITE WARNING MODAL ── -->
+<div class="modal-backdrop" id="overwrite-modal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('overwrite-modal')">&#10005;</button>
+    <h2>Overwrite Existing Data?</h2>
+    <p class="subtitle" id="overwrite-msg">Hero points have already been saved for this week. Saving again will overwrite the existing data.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('overwrite-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmOverwrite()">Overwrite &amp; Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── EDIT WEEKLY POINTS MODAL ── -->
+<div class="modal-backdrop" id="edit-points-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('edit-points-modal')">&#10005;</button>
+    <h2>Edit Hero Points</h2>
+    <p class="subtitle" id="edit-points-sub">Adjust hero points for this member.</p>
+    <input type="hidden" id="edit-points-doc-id" />
+    <div class="form-group"><label>Member</label><input type="text" id="edit-points-name" disabled /></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+      <div class="form-group"><label>KVM</label><input type="number" id="edit-hp-KVM" min="0" /></div>
+      <div class="form-group"><label>xKVM</label><input type="number" id="edit-hp-xKVM" min="0" /></div>
+      <div class="form-group"><label>AA</label><input type="number" id="edit-hp-AA" min="0" /></div>
+      <div class="form-group"><label>GvG</label><input type="number" id="edit-hp-GvG" min="0" /></div>
+      <div class="form-group"><label>xGvG</label><input type="number" id="edit-hp-xGvG" min="0" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-points-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditPoints()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE SINGLE ENTRY CONFIRM ── -->
+<div class="modal-backdrop" id="delete-points-modal">
+  <div class="modal" style="width:360px">
+    <button class="modal-close" onclick="closeModal('delete-points-modal')">&#10005;</button>
+    <h2>Delete Hero Points</h2>
+    <p style="margin:14px 0;color:var(--text-muted)">Remove hero points for <strong id="delete-points-name" style="color:var(--danger)"></strong>? This cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('delete-points-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeletePoints()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE ENTIRE WEEK CONFIRM ── -->
+<div class="modal-backdrop" id="delete-week-modal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('delete-week-modal')">&#10005;</button>
+    <h2>Delete Entire Week?</h2>
+    <p style="margin:14px 0;color:var(--text-muted)">This will remove <strong style="color:var(--danger)">all <span id="delete-week-count">0</span> hero point records</strong> for <span id="delete-week-label"></span>. This cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('delete-week-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeleteWeek()">Delete All</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot, getDoc,
+         getDocs, setDoc, deleteDoc, doc, query, orderBy, where,
+         Timestamp, serverTimestamp }                from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+// ── FIREBASE INIT ──
+const app  = initializeApp({
+  apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
+  authDomain:        "roxheroesdb.firebaseapp.com",
+  projectId:         "roxheroesdb",
+  storageBucket:     "roxheroesdb.firebasestorage.app",
+  messagingSenderId: "473597354749",
+  appId:             "1:473597354749:web:2bb66b1db6c3dc1a241494",
+  measurementId:     "G-FWNYLFLRSK"
+});
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── CONSTANTS ──
+const EVENT_TYPES = ['KVM', 'xKVM', 'AA', 'GvG', 'xGvG'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ── STATE ──
+let members        = [];
+let events         = [];
+let config         = null;
+let isAdmin        = false;
+let unsubMembers   = null;
+let unsubEvents    = null;
+let unsubWeekly    = null;
+
+let calendarYear, calendarMonth;
+{
+  const now = new Date();
+  calendarYear = now.getFullYear();
+  calendarMonth = now.getMonth();
+}
+let calendarInitialized = false;
+
+let selectedWeek       = null; // { weekLabel, weekStart, weekEnd, weekNum }
+let savedWeeklyData    = [];   // weeklyHeroPoints docs for selected week
+let savedWeekLabels    = new Set(); // which weeks in this month have saved data
+let unsubMonthly       = null;
+let stagingRows        = [];
+let resultsSortCol     = 'totalHeroPoints';
+let resultsSortDir     = -1;
+let deletePointsDocId  = null;
+
+// ── UTILS ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+window.showToast = function (msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `show toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+};
+
+window.openModal  = id => document.getElementById(id).classList.add('open');
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+document.querySelectorAll('.modal-backdrop').forEach(bd =>
+  bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); })
+);
+
+function friendlyAuthError(code) {
+  const map = {
+    'auth/invalid-credential':    'Invalid email or password.',
+    'auth/user-not-found':        'No account found with that email.',
+    'auth/wrong-password':        'Incorrect password.',
+    'auth/too-many-requests':     'Too many attempts. Try again later.',
+    'auth/invalid-email':         'Invalid email address.',
+  };
+  return map[code] || 'Sign in failed. Please try again.';
+}
+
+// ── AUTH ──
+onAuthStateChanged(auth, user => {
+  if (user) {
+    isAdmin = true;
+    document.getElementById('user-email-display').textContent = user.email;
+    document.getElementById('admin-login-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    renderWeeklyResults();
+  } else {
+    isAdmin = false;
+    document.getElementById('user-email-display').textContent = '';
+    document.getElementById('admin-login-btn').style.display = '';
+    document.getElementById('logout-btn').style.display = 'none';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    renderWeeklyResults();
+  }
+});
+
+window.doLogin = async function () {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  const err   = document.getElementById('auth-error');
+  const btn   = document.getElementById('login-btn');
+  err.textContent = '';
+  if (!email || !pw) { err.textContent = 'Please enter email and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    err.textContent = friendlyAuthError(e.code);
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+};
+
+window.doLogout = () => signOut(auth);
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.doLogin();
+});
+
+// ── WEEK UTILITIES ──
+function getISOWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function getWeekBounds(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMon);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const weekNum = getISOWeekNumber(monday);
+  const weekLabel = `${monday.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+
+  return { weekLabel, weekStart: monday, weekEnd: sunday, weekNum };
+}
+
+function getMonthWeeks(year, month) {
+  const weeks = [];
+  const seen = new Set();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  // Start from the Monday on or before the 1st
+  const day = monthStart.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const cursor = new Date(year, month, 1 + diffToMon);
+
+  // A month view has at most 6 week rows
+  for (let i = 0; i < 6; i++) {
+    const wb = getWeekBounds(cursor);
+    if (seen.has(wb.weekLabel)) break;
+    if (wb.weekStart > monthEnd) break;
+    if (wb.weekEnd >= monthStart) {
+      seen.add(wb.weekLabel);
+      weeks.push(wb);
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return weeks;
+}
+
+function formatDateShort(d) {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// ── CONFIG ──
+function getDefaultConfig() {
+  return {
+    pointValues: { KVM: 10, xKVM: 10, AA: 20, GvG: 50, xGvG: 50 },
+    qualificationThresholds: { KVM: 3, xKVM: 3, AA: 200, GvG: 3, xGvG: 3 },
+    qualificationMode: { KVM: 'differential', xKVM: 'differential', AA: 'absolute', GvG: 'absolute', xGvG: 'absolute' },
+    rankTiers: { LEGEND: 440, ELITE: 340 }
+  };
+}
+
+async function loadConfig() {
+  try {
+    const snap = await getDoc(doc(db, 'rankingConfig', 'current'));
+    config = snap.exists() ? snap.data() : getDefaultConfig();
+  } catch (e) {
+    config = getDefaultConfig();
+  }
+  renderConfigModal();
+}
+
+function renderConfigModal() {
+  if (!config) return;
+  EVENT_TYPES.forEach(t => {
+    const ptsEl = document.getElementById(`cfg-pts-${t}`);
+    const threshEl = document.getElementById(`cfg-thresh-${t}`);
+    const modeEl = document.getElementById(`cfg-mode-${t}`);
+    if (ptsEl) ptsEl.value = config.pointValues?.[t] ?? 0;
+    if (threshEl) threshEl.value = config.qualificationThresholds?.[t] ?? 0;
+    if (modeEl) modeEl.value = config.qualificationMode?.[t] ?? 'absolute';
+  });
+  document.getElementById('cfg-tier-legend').value = config.rankTiers?.LEGEND ?? 440;
+  document.getElementById('cfg-tier-elite').value = config.rankTiers?.ELITE ?? 340;
+}
+
+window.saveConfig = async function () {
+  const pointValues = {};
+  const qualificationThresholds = {};
+  const qualificationMode = {};
+  EVENT_TYPES.forEach(t => {
+    pointValues[t] = parseInt(document.getElementById(`cfg-pts-${t}`).value) || 0;
+    qualificationThresholds[t] = parseInt(document.getElementById(`cfg-thresh-${t}`).value) || 0;
+    qualificationMode[t] = document.getElementById(`cfg-mode-${t}`).value;
+  });
+  const rankTiers = {
+    LEGEND: parseInt(document.getElementById('cfg-tier-legend').value) || 440,
+    ELITE: parseInt(document.getElementById('cfg-tier-elite').value) || 340,
+  };
+  try {
+    await setDoc(doc(db, 'rankingConfig', 'current'), {
+      pointValues, qualificationThresholds, qualificationMode, rankTiers,
+      updatedAt: serverTimestamp()
+    });
+    config = { pointValues, qualificationThresholds, qualificationMode, rankTiers };
+    closeModal('settings-modal');
+    showToast('Settings saved.', 'ok');
+  } catch (e) {
+    showToast('Failed to save settings: ' + e.message, 'err');
+  }
+};
+
+// ── FIRESTORE LISTENERS ──
+function startListeners() {
+  if (unsubMembers) return;
+
+  const mq = query(collection(db, 'members'), orderBy('name'));
+  unsubMembers = onSnapshot(mq, snap => {
+    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }, err => showToast('Failed to load members: ' + err.message, 'err'));
+
+  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
+  unsubEvents = onSnapshot(eq, snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCalendar();
+  }, err => showToast('Failed to load events: ' + err.message, 'err'));
+}
+
+loadConfig();
+startListeners();
+subscribeMonthlyIndicators();
+
+// ── MONTHLY INDICATORS (which weeks have saved data) ──
+function subscribeMonthlyIndicators() {
+  if (unsubMonthly) { unsubMonthly(); unsubMonthly = null; }
+
+  const monthStart = new Date(calendarYear, calendarMonth, 1);
+  const monthEnd = new Date(calendarYear, calendarMonth + 1, 0, 23, 59, 59, 999);
+
+  const wq = query(
+    collection(db, 'weeklyHeroPoints'),
+    where('weekStart', '>=', Timestamp.fromDate(monthStart)),
+    where('weekStart', '<=', Timestamp.fromDate(monthEnd))
+  );
+  unsubMonthly = onSnapshot(wq, snap => {
+    savedWeekLabels = new Set();
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.weekLabel) savedWeekLabels.add(data.weekLabel);
+    });
+    renderCalendar();
+  }, err => {
+    // Index may need to be created — show the link in console
+    console.error('Monthly query failed (composite index may be needed):', err.message);
+  });
+}
+
+// ── CALENDAR ──
+function renderCalendar() {
+  document.getElementById('calendar-month-label').textContent = `${MONTHS[calendarMonth]} ${calendarYear}`;
+
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+
+  const today = new Date();
+  const monthWeeks = getMonthWeeks(calendarYear, calendarMonth);
+
+  // Build a map of dateKey -> events
+  const dayEventsMap = {};
+  events.forEach(ev => {
+    const d = ev.date?.toDate ? ev.date.toDate() : new Date(ev.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!dayEventsMap[key]) dayEventsMap[key] = [];
+    dayEventsMap[key].push(ev);
+  });
+
+  monthWeeks.forEach((week, idx) => {
+    const row = document.createElement('div');
+    row.className = 'calendar-week-row' + (selectedWeek && selectedWeek.weekLabel === week.weekLabel ? ' selected' : '');
+    row.addEventListener('click', () => selectWeek(week, idx + 1));
+
+    // Week label cell
+    const wLabel = document.createElement('div');
+    wLabel.className = 'week-label';
+    const wText = document.createElement('span');
+    wText.textContent = `W${idx + 1}`;
+    wLabel.appendChild(wText);
+    if (savedWeekLabels.has(week.weekLabel)) {
+      const check = document.createElement('span');
+      check.className = 'week-saved';
+      check.textContent = '\u2713';
+      check.title = 'Hero points saved';
+      wLabel.appendChild(check);
+    }
+    row.appendChild(wLabel);
+
+    // Day cells (Mon through Sun)
+    for (let i = 0; i < 7; i++) {
+      const cellDate = new Date(week.weekStart);
+      cellDate.setDate(week.weekStart.getDate() + i);
+
+      const cell = document.createElement('div');
+      const inMonth = cellDate.getMonth() === calendarMonth;
+      const isToday = cellDate.toDateString() === today.toDateString();
+      const key = `${cellDate.getFullYear()}-${cellDate.getMonth()}-${cellDate.getDate()}`;
+      const dayEv = dayEventsMap[key];
+
+      cell.className = 'calendar-day' + (!inMonth ? ' outside' : '') + (isToday ? ' today' : '');
+
+      const num = document.createElement('span');
+      num.className = 'day-num';
+      num.textContent = cellDate.getDate();
+      cell.appendChild(num);
+
+      if (dayEv) {
+        const pillsWrap = document.createElement('div');
+        pillsWrap.className = 'event-pills';
+        dayEv.forEach(ev => {
+          const pill = document.createElement('span');
+          pill.className = 'event-pill type-' + ev.type;
+          pill.textContent = ev.type;
+          pillsWrap.appendChild(pill);
+        });
+        cell.appendChild(pillsWrap);
+      }
+
+      row.appendChild(cell);
+    }
+
+    grid.appendChild(row);
+  });
+}
+
+window.navigateMonth = function (delta) {
+  calendarMonth += delta;
+  if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  selectedWeek = null;
+  savedWeeklyData = [];
+  clearStaging();
+  document.getElementById('results-section').style.display = 'none';
+  subscribeMonthlyIndicators();
+  renderCalendar();
+};
+
+function selectWeek(week, displayNum) {
+  selectedWeek = { ...week, displayNum };
+  renderCalendar();
+  subscribeSelectedWeek();
+}
+
+// ── SELECTED WEEK DATA ──
+function subscribeSelectedWeek() {
+  if (unsubWeekly) { unsubWeekly(); unsubWeekly = null; }
+  savedWeeklyData = [];
+  clearStaging();
+
+  if (!selectedWeek) {
+    document.getElementById('results-section').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('results-section').style.display = '';
+  document.getElementById('results-week-label').textContent =
+    `Week ${selectedWeek.displayNum} (${formatDateShort(selectedWeek.weekStart)} – ${formatDateShort(selectedWeek.weekEnd)})`;
+
+  const wq = query(
+    collection(db, 'weeklyHeroPoints'),
+    where('weekLabel', '==', selectedWeek.weekLabel)
+  );
+  unsubWeekly = onSnapshot(wq, snap => {
+    savedWeeklyData = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    renderWeeklyResults();
+  }, err => showToast('Failed to load weekly data: ' + err.message, 'err'));
+}
+
+// ── RENDER WEEKLY RESULTS ──
+window.sortResultsBy = function (col) {
+  if (resultsSortCol === col) {
+    resultsSortDir *= -1;
+  } else {
+    resultsSortCol = col;
+    resultsSortDir = col === 'memberName' ? 1 : -1;
+  }
+  renderWeeklyResults();
+};
+
+window.renderWeeklyResults = function () {
+  const body = document.getElementById('results-body');
+  const empty = document.getElementById('results-empty');
+  const genBar = document.getElementById('generate-bar');
+  const actTh = document.getElementById('results-actions-th');
+  const delWeekBtn = document.getElementById('delete-week-btn');
+
+  if (actTh) actTh.style.display = isAdmin ? '' : 'none';
+  if (delWeekBtn) delWeekBtn.style.display = (isAdmin && savedWeeklyData.length > 0) ? '' : 'none';
+
+  const searchTerm = (document.getElementById('results-search-input').value || '').toLowerCase();
+
+  let data = [...savedWeeklyData];
+  if (searchTerm) {
+    data = data.filter(r => (r.memberName || '').toLowerCase().includes(searchTerm));
+  }
+
+  // Sort
+  data.sort((a, b) => {
+    let va, vb;
+    if (resultsSortCol === 'memberName') {
+      va = (a.memberName || '').toLowerCase();
+      vb = (b.memberName || '').toLowerCase();
+      return va < vb ? -resultsSortDir : va > vb ? resultsSortDir : 0;
+    } else if (resultsSortCol === 'totalHeroPoints') {
+      va = a.totalHeroPoints || 0;
+      vb = b.totalHeroPoints || 0;
+    } else {
+      va = a.breakdown?.[resultsSortCol]?.heroPoints || 0;
+      vb = b.breakdown?.[resultsSortCol]?.heroPoints || 0;
+    }
+    return (va - vb) * resultsSortDir;
+  });
+
+  // Update sort icons
+  document.querySelectorAll('#results-section thead th').forEach(th => th.classList.remove('sorted'));
+  const sortedIcon = document.getElementById(`rsort-${resultsSortCol}`);
+  if (sortedIcon) {
+    sortedIcon.parentElement.classList.add('sorted');
+    sortedIcon.textContent = resultsSortDir === 1 ? '\u2191' : '\u2193';
+  }
+
+  document.getElementById('results-count').textContent = data.length;
+
+  if (savedWeeklyData.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = '';
+    if (genBar) genBar.style.display = isAdmin ? '' : 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  if (genBar) genBar.style.display = 'none';
+
+  body.innerHTML = data.map(r => {
+    const bd = r.breakdown || {};
+    const cols = EVENT_TYPES.map(t => {
+      const hp = bd[t]?.heroPoints || 0;
+      const eq = bd[t]?.eventsQualified || 0;
+      const et = bd[t]?.eventsTotal || 0;
+      const details = bd[t]?.eventDetails || [];
+
+      if (et === 0 && hp === 0) return `<td class="qual-cell" style="color:var(--text-muted)">—</td>`;
+
+      // Show per-event detail if available
+      if (details.length > 0) {
+        const detailLines = details.map(d => {
+          if (d.absent) return `<div class="event-detail"><span class="qual-fail">\u2717</span> <span class="detail-muted">${d.eventDate} absent</span></div>`;
+          const icon = d.qualified ? `<span class="qual-check">\u2713</span>` : `<span class="qual-fail">\u2717</span>`;
+          const diffStr = d.diff !== null ? ` (+${d.diff})` : '';
+          return `<div class="event-detail">${icon} ${d.eventDate}: ${d.score.toLocaleString()}${diffStr}</div>`;
+        }).join('');
+        return `<td class="qual-cell" style="text-align:left">
+          ${detailLines}
+          <div class="detail-total"><strong>${eq}/${et}</strong> = ${hp} pts</div>
+        </td>`;
+      }
+
+      // Fallback: no detail, just show points
+      const display = hp > 0 ? `${hp}` : '—';
+      return `<td class="qual-cell" title="${eq}/${et} qualified">${display}</td>`;
+    }).join('');
+    const actions = isAdmin ? `<td class="row-actions">
+      <button class="icon-btn edit" onclick="openEditPoints('${esc(r.docId)}')" title="Edit">&#9998;</button>
+      <button class="icon-btn del" onclick="openDeletePoints('${esc(r.docId)}','${esc(r.memberName)}')" title="Delete">&#128465;</button>
+    </td>` : '';
+    return `<tr>
+      <td>${esc(r.memberName)}</td>
+      ${cols}
+      <td style="font-weight:600;color:var(--accent)">${r.totalHeroPoints || 0}</td>
+      ${actions}
+    </tr>`;
+  }).join('');
+};
+
+// ── EDIT / DELETE WEEKLY POINTS ──
+window.openEditPoints = function (docId) {
+  const r = savedWeeklyData.find(d => d.docId === docId);
+  if (!r) return;
+  document.getElementById('edit-points-doc-id').value = docId;
+  document.getElementById('edit-points-name').value = r.memberName;
+  document.getElementById('edit-points-sub').textContent = `Adjust hero points for ${r.memberName}.`;
+  EVENT_TYPES.forEach(t => {
+    document.getElementById(`edit-hp-${t}`).value = r.breakdown?.[t]?.heroPoints || 0;
+  });
+  openModal('edit-points-modal');
+};
+
+window.saveEditPoints = async function () {
+  const docId = document.getElementById('edit-points-doc-id').value;
+  const r = savedWeeklyData.find(d => d.docId === docId);
+  if (!r) return;
+
+  const breakdown = { ...r.breakdown };
+  let total = 0;
+  EVENT_TYPES.forEach(t => {
+    const hp = parseInt(document.getElementById(`edit-hp-${t}`).value) || 0;
+    breakdown[t] = { ...breakdown[t], heroPoints: hp };
+    total += hp;
+  });
+
+  try {
+    await setDoc(doc(db, 'weeklyHeroPoints', docId), {
+      breakdown, totalHeroPoints: total
+    }, { merge: true });
+    closeModal('edit-points-modal');
+    showToast('Hero points updated.', 'ok');
+  } catch (e) {
+    showToast('Failed to update: ' + e.message, 'err');
+  }
+};
+
+window.openDeletePoints = function (docId, name) {
+  deletePointsDocId = docId;
+  document.getElementById('delete-points-name').textContent = name;
+  openModal('delete-points-modal');
+};
+
+window.confirmDeletePoints = async function () {
+  if (!deletePointsDocId) return;
+  try {
+    await deleteDoc(doc(db, 'weeklyHeroPoints', deletePointsDocId));
+    closeModal('delete-points-modal');
+    showToast('Hero points deleted.', 'ok');
+  } catch (e) {
+    showToast('Failed to delete: ' + e.message, 'err');
+  }
+  deletePointsDocId = null;
+};
+
+// ── DELETE ENTIRE WEEK ──
+window.openDeleteWeek = function () {
+  if (!selectedWeek || savedWeeklyData.length === 0) return;
+  document.getElementById('delete-week-count').textContent = savedWeeklyData.length;
+  document.getElementById('delete-week-label').textContent =
+    `Week ${selectedWeek.displayNum} (${formatDateShort(selectedWeek.weekStart)} – ${formatDateShort(selectedWeek.weekEnd)})`;
+  openModal('delete-week-modal');
+};
+
+window.confirmDeleteWeek = async function () {
+  if (!selectedWeek || savedWeeklyData.length === 0) return;
+  try {
+    await Promise.all(savedWeeklyData.map(d => deleteDoc(doc(db, 'weeklyHeroPoints', d.docId))));
+    closeModal('delete-week-modal');
+    showToast(`All ${savedWeeklyData.length} records deleted.`, 'ok');
+  } catch (e) {
+    showToast('Failed to delete week: ' + e.message, 'err');
+  }
+};
+
+// ── GENERATE HERO POINTS ──
+window.generateWeeklyPoints = async function () {
+  if (!selectedWeek || !config) {
+    showToast('Select a week and ensure settings are loaded.', 'err');
+    return;
+  }
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  try {
+    const { weekStart, weekEnd } = selectedWeek;
+
+    // 1. Query events in this week
+    const evSnap = await getDocs(query(
+      collection(db, 'events'),
+      where('date', '>=', Timestamp.fromDate(weekStart)),
+      where('date', '<=', Timestamp.fromDate(weekEnd))
+    ));
+    const weekEvents = evSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (weekEvents.length === 0) {
+      showToast('No events found in this week.', 'err');
+      btn.disabled = false; btn.textContent = '\u26A1 Generate Hero Points';
+      return;
+    }
+
+    // 2. Fetch all eventResults for each event
+    const allResults = {};
+    for (const ev of weekEvents) {
+      const rSnap = await getDocs(query(
+        collection(db, 'eventResults'),
+        where('eventId', '==', ev.id)
+      ));
+      allResults[ev.id] = rSnap.docs.map(d => d.data());
+    }
+
+    // 3. Group events by type, sort by date ascending
+    const eventsByType = {};
+    weekEvents.forEach(ev => {
+      if (!eventsByType[ev.type]) eventsByType[ev.type] = [];
+      eventsByType[ev.type].push(ev);
+    });
+    Object.values(eventsByType).forEach(arr =>
+      arr.sort((a, b) => {
+        const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        const db2 = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+        return da - db2;
+      })
+    );
+
+    // 4. Calculate hero points per member per event type
+    const memberMap = {};
+
+    members.forEach(m => {
+      const breakdown = {};
+      let totalHeroPoints = 0;
+
+      EVENT_TYPES.forEach(eventType => {
+        const typeEvents = eventsByType[eventType] || [];
+        const threshold = config.qualificationThresholds[eventType] || 0;
+        const pointValue = config.pointValues[eventType] || 0;
+        const mode = config.qualificationMode[eventType] || 'absolute';
+
+        let eventsQualified = 0;
+        let prevPoints = null;
+        const eventDetails = [];
+
+        typeEvents.forEach((ev, idx) => {
+          const results = allResults[ev.id] || [];
+          const memberResult = results.find(r => r.characterId === m.characterId);
+          const evDate = ev.date?.toDate ? ev.date.toDate() : new Date(ev.date);
+
+          if (!memberResult) {
+            eventDetails.push({ score: null, qualified: false, diff: null, eventDate: formatDateShort(evDate), absent: true });
+            return;
+          }
+
+          const pts = memberResult.points || 0;
+          let qualified = false;
+          let diff = null;
+
+          if (mode === 'differential') {
+            if (idx === 0) {
+              qualified = pts > 0;
+              prevPoints = pts;
+            } else {
+              diff = prevPoints !== null ? pts - prevPoints : 0;
+              qualified = prevPoints !== null && diff >= threshold;
+              prevPoints = pts;
+            }
+          } else {
+            qualified = pts >= threshold;
+          }
+
+          if (qualified) eventsQualified++;
+          eventDetails.push({ score: pts, qualified, diff, eventDate: formatDateShort(evDate), absent: false });
+        });
+
+        const heroPoints = eventsQualified * pointValue;
+        totalHeroPoints += heroPoints;
+        breakdown[eventType] = { eventsQualified, eventsTotal: typeEvents.length, heroPoints, eventDetails };
+      });
+
+      if (totalHeroPoints > 0) {
+        memberMap[m.characterId] = {
+          characterId: m.characterId,
+          memberName: m.name,
+          breakdown,
+          totalHeroPoints
+        };
+      }
+    });
+
+    // 5. Build staging rows
+    stagingRows = Object.values(memberMap).sort((a, b) => b.totalHeroPoints - a.totalHeroPoints);
+    renderStaging();
+
+  } catch (e) {
+    showToast('Generation failed: ' + e.message, 'err');
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '\u26A1 Generate Hero Points';
+};
+
+// ── STAGING TABLE ──
+function renderStaging() {
+  const section = document.getElementById('staging-section');
+  const body = document.getElementById('staging-body');
+
+  if (stagingRows.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+  document.getElementById('staging-count').textContent = stagingRows.length;
+  document.getElementById('save-info').textContent =
+    `${stagingRows.length} members, ${stagingRows.reduce((s, r) => s + r.totalHeroPoints, 0)} total hero points`;
+
+  body.innerHTML = stagingRows.map((r, ri) => {
+    const cols = EVENT_TYPES.map(t => {
+      const bd = r.breakdown[t];
+      const hp = bd.heroPoints;
+      const eq = bd.eventsQualified;
+      const et = bd.eventsTotal;
+      const details = bd.eventDetails || [];
+      if (et === 0) return `<td class="qual-cell" style="color:var(--text-muted)">—</td>`;
+
+      // Build per-event detail lines
+      const detailLines = details.map(d => {
+        if (d.absent) return `<div class="event-detail"><span class="qual-fail">\u2717</span> <span class="detail-muted">${d.eventDate} absent</span></div>`;
+        const icon = d.qualified ? `<span class="qual-check">\u2713</span>` : `<span class="qual-fail">\u2717</span>`;
+        const diffStr = d.diff !== null ? ` (+${d.diff})` : '';
+        return `<div class="event-detail">${icon} ${d.eventDate}: ${d.score.toLocaleString()}${diffStr}</div>`;
+      }).join('');
+
+      return `<td class="qual-cell" style="text-align:left">
+        ${detailLines}
+        <div class="detail-total"><strong>${eq}/${et}</strong> = <span class="editable-cell" onclick="editStagingCell(${ri},'${t}')" title="Click to adjust">${hp} pts</span></div>
+      </td>`;
+    }).join('');
+    return `<tr>
+      <td>${esc(r.memberName)}</td>
+      ${cols}
+      <td style="font-weight:600;color:var(--accent)">${r.totalHeroPoints}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.editStagingCell = function (rowIdx, eventType) {
+  const row = stagingRows[rowIdx];
+  if (!row) return;
+  const newVal = prompt(`Hero points for ${row.memberName} — ${eventType}:`, row.breakdown[eventType].heroPoints);
+  if (newVal === null) return;
+  const val = parseInt(newVal);
+  if (isNaN(val) || val < 0) { showToast('Invalid value.', 'err'); return; }
+
+  row.breakdown[eventType].heroPoints = val;
+  row.totalHeroPoints = EVENT_TYPES.reduce((s, t) => s + (row.breakdown[t]?.heroPoints || 0), 0);
+  renderStaging();
+};
+
+window.clearStaging = function () {
+  stagingRows = [];
+  document.getElementById('staging-section').style.display = 'none';
+};
+
+// ── SAVE WEEKLY POINTS ──
+window.saveWeeklyPoints = async function () {
+  if (!selectedWeek || stagingRows.length === 0) return;
+
+  // Check if data already exists for this week
+  if (savedWeeklyData.length > 0) {
+    openModal('overwrite-modal');
+    return;
+  }
+
+  await executeSave();
+};
+
+window.confirmOverwrite = async function () {
+  closeModal('overwrite-modal');
+  // Delete existing docs first
+  try {
+    await Promise.all(savedWeeklyData.map(d => deleteDoc(doc(db, 'weeklyHeroPoints', d.docId))));
+  } catch (e) {
+    showToast('Failed to clear existing data: ' + e.message, 'err');
+    return;
+  }
+  await executeSave();
+};
+
+async function executeSave() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+
+  const { weekLabel, weekStart, weekEnd } = selectedWeek;
+
+  try {
+    await Promise.all(stagingRows.map(row => {
+      const docId = `${weekLabel}_${row.characterId}`;
+      return setDoc(doc(db, 'weeklyHeroPoints', docId), {
+        weekLabel,
+        weekStart: Timestamp.fromDate(weekStart),
+        weekEnd: Timestamp.fromDate(weekEnd),
+        characterId: row.characterId,
+        memberName: row.memberName,
+        breakdown: row.breakdown,
+        totalHeroPoints: row.totalHeroPoints,
+        configSnapshot: {
+          pointValues: { ...config.pointValues },
+          qualificationThresholds: { ...config.qualificationThresholds },
+          qualificationMode: { ...config.qualificationMode }
+        },
+        generatedAt: serverTimestamp(),
+        generatedBy: auth.currentUser?.email || 'unknown'
+      });
+    }));
+
+    showToast(`${stagingRows.length} hero point records saved for ${weekLabel}.`, 'ok');
+    clearStaging();
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'err');
+  }
+
+  btn.disabled = false;
+}
+
+</script>
+</body>
+</html>
