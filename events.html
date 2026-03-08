@@ -182,6 +182,43 @@
 
   .save-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
   .save-bar .save-info { font-size: 0.85rem; color: var(--text-muted); }
+
+  /* ── TABLE / SORT (shared) ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; }
+
+  .results-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .results-toolbar h3 { margin: 0; font-size: 0.95rem; white-space: nowrap; }
+  .results-search {
+    flex: 1; min-width: 180px; max-width: 320px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none;
+    transition: border-color .15s;
+  }
+  .results-search:focus { border-color: var(--accent); }
+
+  /* ── RESULTS SECTION ── */
+  .results-section { margin-bottom: 20px; }
+  .results-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+  .row-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; padding: 5px 8px; border-radius: 6px;
+    color: var(--text-muted); font-size: 1rem; transition: background .15s, color .15s;
+  }
+  .icon-btn:hover.edit { background: #1e2a3a; color: var(--accent); }
+  .icon-btn:hover.del  { background: #3a1e1e; color: var(--danger); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 </style>
 </head>
 <body>
@@ -234,6 +271,28 @@
             <option value="">— Select an event —</option>
           </select>
         </div>
+      </div>
+    </div>
+
+    <!-- Saved event results (visible to all) -->
+    <div class="results-section" id="results-section" style="display:none">
+      <div class="results-toolbar">
+        <h3><span id="results-event-label"></span> — <span id="results-count">0</span> entries</h3>
+        <input class="results-search" type="text" placeholder="Search by name or ID..." id="results-search-input" oninput="renderResults()" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortResultsBy('memberName')">Member Name <span class="sort-icon" id="rsort-memberName">↕</span></th>
+              <th onclick="sortResultsBy('characterId')">Character ID <span class="sort-icon" id="rsort-characterId">↕</span></th>
+              <th onclick="sortResultsBy('points')">Points <span class="sort-icon" id="rsort-points">↕</span></th>
+              <th id="results-actions-th" style="display:none"></th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+        <div class="results-empty" id="results-empty" style="display:none">No results saved for this event yet</div>
       </div>
     </div>
 
@@ -314,6 +373,45 @@
   </div>
 </div>
 
+<!-- ── EDIT RESULT MODAL ── -->
+<div class="modal-backdrop" id="edit-result-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('edit-result-modal')">✕</button>
+    <h2>Edit Result</h2>
+    <p class="subtitle" id="edit-result-sub">Update member or points.</p>
+    <input type="hidden" id="edit-result-id" />
+    <input type="hidden" id="edit-result-orig-char-id" />
+    <div class="form-group">
+      <label>Member</label>
+      <div class="search-select" id="edit-result-member-select">
+        <input type="text" class="search-input" id="edit-result-member-input" placeholder="Search name or ID..." />
+        <div class="search-dropdown" id="edit-result-member-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Points</label>
+      <input type="number" id="edit-result-points" placeholder="e.g. 15000" min="0" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-result-modal')">Cancel</button>
+      <button class="btn btn-primary" id="edit-result-save-btn" onclick="saveEditResult()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE RESULT CONFIRM ── -->
+<div class="modal-backdrop" id="delete-result-modal">
+  <div class="modal" style="width:360px">
+    <button class="modal-close" onclick="closeModal('delete-result-modal')">✕</button>
+    <h2>Delete Result</h2>
+    <p style="margin:14px 0;color:var(--text-muted)">Remove the result for <strong id="delete-result-name" style="color:var(--danger)"></strong>? This cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('delete-result-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeleteResult()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── TOAST ── -->
 <div id="toast"></div>
 
@@ -322,7 +420,7 @@ import { initializeApp }                            from 'https://www.gstatic.co
 import { getAuth, signInWithEmailAndPassword,
          signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 import { getFirestore, collection, onSnapshot,
-         getDocs, setDoc, doc, query, orderBy, where,
+         getDocs, setDoc, deleteDoc, doc, query, orderBy, where,
          addDoc, Timestamp }        from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 
 // ── FIREBASE INIT ──
@@ -347,6 +445,12 @@ let unsubMembers       = null;
 let unsubEvents        = null;
 let pendingEventSelect = null;
 let isAdmin            = false;
+let savedResults       = [];
+let unsubResults       = null;
+let deleteResultDocId  = null;
+let editResultCharId   = null;
+let resultsSortCol     = 'memberName';
+let resultsSortDir     = 1;
 
 // ── UTILS ──
 function esc(str) {
@@ -390,12 +494,14 @@ onAuthStateChanged(auth, user => {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
     closeModal('login-modal');
     onEventChange(); // re-check workflow enabled state
+    renderResults();
   } else {
     isAdmin = false;
     document.getElementById('user-email-display').textContent = '';
     document.getElementById('admin-login-btn').style.display = '';
     document.getElementById('logout-btn').style.display = 'none';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    renderResults();
   }
 });
 
@@ -473,6 +579,24 @@ function onEventChange() {
   } else {
     section.classList.add('disabled');
   }
+  subscribeResults();
+}
+
+function subscribeResults() {
+  // Unsubscribe previous listener
+  if (unsubResults) { unsubResults(); unsubResults = null; }
+  savedResults = [];
+
+  if (!selectedEventId) {
+    document.getElementById('results-section').style.display = 'none';
+    return;
+  }
+
+  const rq = query(collection(db, 'eventResults'), where('eventId', '==', selectedEventId));
+  unsubResults = onSnapshot(rq, snap => {
+    savedResults = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    renderResults();
+  }, err => showToast('Failed to load results: ' + err.message, 'err'));
 }
 
 // ── CREATE EVENT ──
@@ -772,6 +896,220 @@ window.deleteRow = function (idx) {
 window.clearStaging = function () {
   stagingRows = [];
   renderStaging();
+};
+
+// ── RENDER SAVED RESULTS ──
+function renderResults() {
+  const section = document.getElementById('results-section');
+  const tbody   = document.getElementById('results-body');
+  const empty   = document.getElementById('results-empty');
+  const actTh   = document.getElementById('results-actions-th');
+
+  if (!selectedEventId) { section.style.display = 'none'; return; }
+
+  // Update header label with event type + date
+  const event = events.find(e => e.id === selectedEventId);
+  if (event) {
+    const d = event.date?.toDate ? event.date.toDate() : new Date(event.date);
+    document.getElementById('results-event-label').textContent = `${event.type} — ${d.toLocaleDateString()}`;
+  }
+
+  section.style.display = '';
+  actTh.style.display = isAdmin ? '' : 'none';
+  document.getElementById('results-count').textContent = savedResults.length;
+
+  if (savedResults.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Search filter
+  const q = (document.getElementById('results-search-input').value || '').toLowerCase();
+  let filtered = savedResults;
+  if (q) {
+    filtered = savedResults.filter(r =>
+      (r.memberName || '').toLowerCase().includes(q) ||
+      (r.characterId || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va = a[resultsSortCol] ?? '', vb = b[resultsSortCol] ?? '';
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    return va < vb ? -resultsSortDir : va > vb ? resultsSortDir : 0;
+  });
+
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td><strong>${esc(r.memberName)}</strong></td>
+      <td style="color:var(--text-muted);font-family:monospace">${esc(r.characterId)}</td>
+      <td>${(r.points ?? 0).toLocaleString()}</td>
+      ${isAdmin ? `<td>
+        <div class="row-actions">
+          <button class="icon-btn edit" title="Edit" onclick="openEditResult('${esc(r.docId)}')">✏️</button>
+          <button class="icon-btn del" title="Delete" onclick="askDeleteResult('${esc(r.docId)}')">🗑️</button>
+        </div>
+      </td>` : ''}
+    </tr>`).join('');
+
+  // Update sort icons
+  ['memberName','characterId','points'].forEach(c => {
+    const icon = document.getElementById('rsort-' + c);
+    if (icon) icon.textContent = c === resultsSortCol ? (resultsSortDir === 1 ? '↑' : '↓') : '↕';
+    const th = document.querySelector(`[onclick="sortResultsBy('${c}')"]`);
+    if (th) th.classList.toggle('sorted', c === resultsSortCol);
+  });
+}
+
+window.sortResultsBy = function (col) {
+  if (resultsSortCol === col) resultsSortDir *= -1; else { resultsSortCol = col; resultsSortDir = 1; }
+  renderResults();
+};
+
+// ── EDIT RESULT ──
+window.openEditResult = function (docId) {
+  const r = savedResults.find(x => x.docId === docId);
+  if (!r) return;
+  document.getElementById('edit-result-id').value = docId;
+  document.getElementById('edit-result-orig-char-id').value = r.characterId;
+  document.getElementById('edit-result-points').value = r.points ?? 0;
+  document.getElementById('edit-result-sub').textContent = `Editing result for ${r.memberName}`;
+  editResultCharId = r.characterId;
+
+  // Set member input
+  const input = document.getElementById('edit-result-member-input');
+  input.value = `${r.memberName} (${r.characterId})`;
+
+  openModal('edit-result-modal');
+};
+
+// Edit result member dropdown
+const editMemberInput = document.getElementById('edit-result-member-input');
+const editMemberDropdown = document.getElementById('edit-result-member-dropdown');
+
+editMemberInput.addEventListener('focus', () => {
+  editMemberInput.select();
+  showEditResultDropdown('');
+});
+editMemberInput.addEventListener('input', () => {
+  showEditResultDropdown(editMemberInput.value);
+});
+editMemberInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const first = editMemberDropdown.querySelector('.search-dropdown-item[data-character-id]:not([data-character-id=""])');
+    if (first) selectEditResultMember(first.dataset.characterId);
+    editMemberDropdown.classList.remove('open');
+  } else if (e.key === 'Escape') {
+    editMemberDropdown.classList.remove('open');
+  }
+});
+editMemberInput.addEventListener('blur', () => {
+  setTimeout(() => {
+    editMemberDropdown.classList.remove('open');
+    // Restore display value
+    const m = members.find(x => x.characterId === editResultCharId);
+    editMemberInput.value = m ? `${m.name} (${m.characterId})` : '';
+  }, 150);
+});
+editMemberDropdown.addEventListener('mousedown', e => {
+  const item = e.target.closest('.search-dropdown-item');
+  if (!item) return;
+  e.preventDefault();
+  selectEditResultMember(item.dataset.characterId || '');
+});
+
+function selectEditResultMember(characterId) {
+  if (characterId) {
+    editResultCharId = characterId;
+    const m = members.find(x => x.characterId === characterId);
+    editMemberInput.value = m ? `${m.name} (${m.characterId})` : characterId;
+  }
+  editMemberDropdown.classList.remove('open');
+}
+
+function showEditResultDropdown(searchText) {
+  const search = searchText.toLowerCase().trim();
+  const filtered = members
+    .filter(m => !search || (m.name || '').toLowerCase().includes(search) || (m.characterId || '').toLowerCase().includes(search))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (filtered.length === 0) {
+    editMemberDropdown.innerHTML = '<div style="padding:8px 10px;color:var(--text-muted);font-size:0.83rem">No matches found</div>';
+  } else {
+    editMemberDropdown.innerHTML = filtered.map(m =>
+      `<div class="search-dropdown-item" data-character-id="${esc(m.characterId)}">
+        <span>${esc(m.name)}</span>
+        <span class="item-id">${esc(m.characterId)}</span>
+      </div>`
+    ).join('');
+  }
+  editMemberDropdown.classList.add('open');
+}
+
+window.saveEditResult = async function () {
+  const docId = document.getElementById('edit-result-id').value;
+  const origCharId = document.getElementById('edit-result-orig-char-id').value;
+  const newCharId = editResultCharId;
+  const newPoints = parseInt(document.getElementById('edit-result-points').value) || 0;
+
+  if (!newCharId) { showToast('Please select a member.', 'err'); return; }
+
+  const event = events.find(e => e.id === selectedEventId);
+  if (!event) return;
+
+  const newMember = members.find(m => m.characterId === newCharId);
+  const btn = document.getElementById('edit-result-save-btn');
+  btn.disabled = true;
+
+  try {
+    if (newCharId !== origCharId) {
+      // Member changed: delete old doc, create new one with new compound ID
+      await deleteDoc(doc(db, 'eventResults', docId));
+      const newDocId = `${selectedEventId}_${newCharId}`;
+      await setDoc(doc(db, 'eventResults', newDocId), {
+        characterId: newCharId,
+        memberName:  newMember ? newMember.name : newCharId,
+        eventId:     selectedEventId,
+        eventType:   event.type,
+        eventDate:   event.date,
+        points:      newPoints,
+      });
+    } else {
+      // Same member, just update points
+      await setDoc(doc(db, 'eventResults', docId), { points: newPoints }, { merge: true });
+    }
+    closeModal('edit-result-modal');
+    showToast('Result updated.', 'ok');
+  } catch (e) {
+    showToast('Update failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ── DELETE RESULT ──
+window.askDeleteResult = function (docId) {
+  const r = savedResults.find(x => x.docId === docId);
+  if (!r) return;
+  deleteResultDocId = docId;
+  document.getElementById('delete-result-name').textContent = r.memberName || r.characterId;
+  openModal('delete-result-modal');
+};
+
+window.confirmDeleteResult = async function () {
+  if (!deleteResultDocId) return;
+  try {
+    await deleteDoc(doc(db, 'eventResults', deleteResultDocId));
+    closeModal('delete-result-modal');
+    showToast('Result removed.', 'ok');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'err');
+  }
+  deleteResultDocId = null;
 };
 
 // ── SAVE RESULTS ──
