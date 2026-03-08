@@ -202,6 +202,21 @@
   .change-val .old-val { text-decoration: line-through; color: var(--danger); margin-right: 4px; }
   .change-val .new-val { color: var(--success); }
   .change-val .same-val { color: var(--text-muted); }
+
+  /* ── NAME CHOICE ── */
+  .name-choice { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+  .name-option { display: flex; align-items: center; gap: 6px; font-size: 0.83rem; cursor: pointer; }
+  .name-option input[type="radio"] { accent-color: var(--accent); margin: 0; cursor: pointer; }
+  .name-option label { cursor: pointer; white-space: nowrap; }
+  .name-option .old-label { color: var(--text-muted); }
+  .name-option .new-label { color: var(--success); }
+  .name-edit-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .name-edit-input {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 4px 8px; color: var(--text); font-size: 0.83rem; outline: none; width: 180px;
+  }
+  .name-edit-input:focus { border-color: var(--accent); }
+  .name-same { font-size: 0.83rem; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -257,6 +272,7 @@
           <thead>
             <tr>
               <th>Name (from image)</th>
+              <th>Save Name</th>
               <th>Level</th>
               <th>7-day Contrib</th>
               <th>Attempts</th>
@@ -829,14 +845,20 @@ window.processMemberResponse = function () {
     const isUncertain = row.uncertain === true;
     if (isUncertain) uncertainCount++;
 
+    const nameFromImage = row.name || '';
+    const memberName = member ? member.name : null;
+    const namesDiffer = member && memberName !== nameFromImage;
+
     stagingRows.push({
-      nameFromImage:      row.name || '',
+      nameFromImage,
       level:              parseInt(row.level) || 0,
       weeklyContribution: parseInt(row.weeklyContribution) || 0,
       attempts:           parseInt(row.attempts) || 0,
       status:             member ? 'matched' : 'unmatched',
       characterId:        member ? member.characterId : null,
-      memberName:         member ? member.name : null,
+      memberName,
+      saveName:           namesDiffer ? nameFromImage : (memberName || nameFromImage),
+      nameSource:         namesDiffer ? 'new' : 'keep',
       uncertain:          isUncertain,
       note:               isUncertain ? (row.note || 'Flagged as uncertain') : null,
     });
@@ -878,8 +900,39 @@ function renderStaging() {
       }
     }
 
+    // Name choice column
+    let nameChoiceHtml;
+    const existing = row.characterId ? members.find(m => m.characterId === row.characterId) : null;
+    const oldName = existing ? existing.name : null;
+    const newName = row.nameFromImage;
+    const namesDiffer = oldName && oldName !== newName;
+
+    if (namesDiffer) {
+      nameChoiceHtml = `<div class="name-choice">
+        <div class="name-option">
+          <input type="radio" name="name-choice-${idx}" id="name-old-${idx}" value="old" ${row.nameSource === 'old' ? 'checked' : ''} onchange="setNameSource(${idx},'old')"/>
+          <label for="name-old-${idx}" class="old-label">${esc(oldName)}</label>
+        </div>
+        <div class="name-option">
+          <input type="radio" name="name-choice-${idx}" id="name-new-${idx}" value="new" ${row.nameSource === 'new' ? 'checked' : ''} onchange="setNameSource(${idx},'new')"/>
+          <label for="name-new-${idx}" class="new-label">${esc(newName)}</label>
+        </div>
+        <div class="name-edit-row">
+          <input type="text" class="name-edit-input" data-row-idx="${idx}" value="${esc(row.saveName)}" oninput="setNameCustom(${idx}, this.value)" placeholder="Edit name..." />
+        </div>
+      </div>`;
+    } else {
+      nameChoiceHtml = `<div class="name-choice">
+        <span class="name-same">${esc(row.saveName)}</span>
+        <div class="name-edit-row">
+          <input type="text" class="name-edit-input" data-row-idx="${idx}" value="${esc(row.saveName)}" oninput="setNameCustom(${idx}, this.value)" placeholder="Edit name..." />
+        </div>
+      </div>`;
+    }
+
     return `<tr>
       <td>${esc(row.nameFromImage)}${noteHtml}</td>
+      <td>${nameChoiceHtml}</td>
       <td>${levelHtml}</td>
       <td>${contribHtml}</td>
       <td>${attemptsHtml}</td>
@@ -916,17 +969,45 @@ function formatDiff(oldVal, newVal, useLocale = false) {
 
 window.resolveRow = function (idx, characterId) {
   if (idx < 0 || idx >= stagingRows.length) return;
+  const row = stagingRows[idx];
   if (characterId) {
     const m = members.find(x => x.characterId === characterId);
-    stagingRows[idx].characterId = characterId;
-    stagingRows[idx].memberName  = m ? m.name : null;
-    stagingRows[idx].status      = 'matched';
+    row.characterId = characterId;
+    row.memberName  = m ? m.name : null;
+    row.status      = 'matched';
+    // Re-evaluate name choice
+    const namesDiffer = m && m.name !== row.nameFromImage;
+    row.nameSource = namesDiffer ? 'new' : 'keep';
+    row.saveName   = namesDiffer ? row.nameFromImage : (m ? m.name : row.nameFromImage);
   } else {
-    stagingRows[idx].characterId = null;
-    stagingRows[idx].memberName  = null;
-    stagingRows[idx].status      = 'unmatched';
+    row.characterId = null;
+    row.memberName  = null;
+    row.status      = 'unmatched';
+    row.nameSource  = 'keep';
+    row.saveName    = row.nameFromImage;
   }
   renderStaging();
+};
+
+window.setNameSource = function (idx, source) {
+  if (idx < 0 || idx >= stagingRows.length) return;
+  const row = stagingRows[idx];
+  row.nameSource = source;
+  const existing = row.characterId ? members.find(m => m.characterId === row.characterId) : null;
+  if (source === 'old' && existing) {
+    row.saveName = existing.name;
+  } else if (source === 'new') {
+    row.saveName = row.nameFromImage;
+  }
+  // Update the edit input without full re-render
+  const input = document.querySelector(`.name-edit-input[data-row-idx="${idx}"]`);
+  if (input) input.value = row.saveName;
+};
+
+window.setNameCustom = function (idx, value) {
+  if (idx < 0 || idx >= stagingRows.length) return;
+  stagingRows[idx].saveName = value;
+  stagingRows[idx].nameSource = 'custom';
 };
 
 function updateSaveState() {
@@ -1065,6 +1146,8 @@ window.saveUpdates = async function () {
     const existing = members.find(m => m.characterId === row.characterId);
     if (!existing) return null;
     const diffs = [];
+    const trimmedSaveName = (row.saveName || '').trim();
+    if (trimmedSaveName && trimmedSaveName !== existing.name) diffs.push(`Name: ${existing.name} → ${trimmedSaveName}`);
     if ((existing.level ?? 0) !== row.level) diffs.push(`Level: ${existing.level ?? 0} → ${row.level}`);
     if ((existing.weeklyContribution ?? 0) !== row.weeklyContribution) diffs.push(`Contrib: ${(existing.weeklyContribution ?? 0).toLocaleString()} → ${row.weeklyContribution.toLocaleString()}`);
     if ((existing.attempts ?? 0) !== row.attempts) diffs.push(`Attempts: ${existing.attempts ?? 0} → ${row.attempts}`);
@@ -1097,12 +1180,17 @@ window.confirmMemberOverwrite = async function () {
       const existing = members.find(m => m.characterId === row.characterId);
       if (!existing) return Promise.resolve();
 
-      return setDoc(doc(db, 'members', existing.id), {
+      const updateData = {
         level:              row.level,
         weeklyContribution: row.weeklyContribution,
         attempts:           row.attempts,
         updatedAt:          serverTimestamp(),
-      }, { merge: true });
+      };
+      const trimmedSaveName = (row.saveName || '').trim();
+      if (trimmedSaveName && trimmedSaveName !== existing.name) {
+        updateData.name = trimmedSaveName;
+      }
+      return setDoc(doc(db, 'members', existing.id), updateData, { merge: true });
     }));
 
     showToast(`${stagingRows.length} member(s) updated.`, 'ok');
