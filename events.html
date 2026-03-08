@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ROX-DB — Events</title>
+<title>HEROES — Events</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -69,20 +69,133 @@
 
   main { padding: 28px 24px; flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
 
-  .placeholder {
-    text-align: center; padding: 80px 20px; color: var(--text-muted);
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  /* ── BUTTONS (from members) ── */
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-danger:hover:not(:disabled) { background: #c94444; }
+  .btn-success { background: var(--success); color: #000; }
+
+  /* ── TABLE (from members) ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap;
   }
-  .placeholder-icon { font-size: 2.5rem; margin-bottom: 12px; }
-  .placeholder h2 { color: var(--text); font-size: 1.3rem; margin-bottom: 8px; }
-  .placeholder p { font-size: 0.9rem; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; }
+
+  /* ── MODAL (from members) ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 32px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    position: relative;
+  }
+  .modal h2 { font-size: 1.15rem; margin-bottom: 6px; }
+  .modal .subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 22px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 18px; background: none; border: none;
+    color: var(--text-muted); font-size: 1.3rem; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* ── TOAST (from members) ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 12px 20px;
+    font-size: 0.9rem; z-index: 999; opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-ok  { border-color: var(--success); color: var(--success); }
+  #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
+
+  /* ── FORM SELECT (from members) ── */
+  .form-group select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; outline: none;
+    transition: border-color .15s;
+  }
+  .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
+
+  /* ── EVENTS-SPECIFIC ── */
+  .event-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 20px;
+  }
+  .event-bar h3 { font-size: 0.78rem; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .event-bar-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .event-bar-row .form-group { margin-bottom: 0; flex: 1; min-width: 150px; }
+  .event-bar-row .form-group.narrow { flex: 0 0 180px; }
+
+  .workflow-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 24px; margin-bottom: 20px;
+  }
+  .workflow-section.disabled { opacity: 0.4; pointer-events: none; }
+  .workflow-step { margin-bottom: 20px; }
+  .workflow-step:last-child { margin-bottom: 0; }
+  .workflow-step h3 { font-size: 0.9rem; margin-bottom: 8px; color: var(--accent); }
+  .workflow-step p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+  .workflow-step textarea {
+    width: 100%; min-height: 120px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 12px; color: var(--text); font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.85rem; resize: vertical; outline: none; transition: border-color .15s;
+  }
+  .workflow-step textarea:focus { border-color: var(--accent); }
+  .step-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  .processing-indicator { display: flex; align-items: center; gap: 10px; padding: 14px 0; color: var(--accent); font-size: 0.9rem; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .staging-section { margin-top: 20px; }
+  .staging-section h3 { font-size: 0.95rem; margin-bottom: 12px; }
+
+  .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .status-dot.matched { background: var(--success); }
+  .status-dot.unmatched { background: var(--danger); }
+  .status-dot.uncertain { background: #f0ad4e; }
+  .uncertain-note { font-size: 0.78rem; color: #f0ad4e; margin-top: 2px; }
+
+  .search-select { position: relative; display: inline-block; }
+  .search-select input {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 8px; color: var(--text); font-size: 0.85rem; outline: none; width: 240px;
+  }
+  .search-select input:focus { border-color: var(--accent); }
+  .search-dropdown {
+    position: absolute; top: 100%; left: 0; min-width: 300px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+    max-height: 220px; overflow-y: auto; z-index: 50; display: none; margin-top: 2px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .search-dropdown.open { display: block; }
+  .search-dropdown-item {
+    padding: 7px 10px; cursor: pointer; font-size: 0.83rem;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: background .1s;
+  }
+  .search-dropdown-item:hover { background: var(--surface2); }
+  .search-dropdown-item .item-id { color: var(--text-muted); font-size: 0.78rem; margin-left: 12px; white-space: nowrap; }
+
+  .save-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+  .save-bar .save-info { font-size: 0.85rem; color: var(--text-muted); }
 </style>
 </head>
 <body>
 
 <div id="auth-screen">
   <div class="auth-card">
-    <h1>ROX<span style="color:var(--accent)">-DB</span></h1>
+    <h1>HEROES</h1>
     <p>Guild roster management</p>
     <div class="error-msg" id="auth-error"></div>
     <div class="form-group">
@@ -99,7 +212,7 @@
 
 <div id="app-screen">
   <header>
-    <div class="logo">ROX<span>-DB</span></div>
+    <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
       <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
@@ -113,20 +226,110 @@
   </nav>
 
   <main>
-    <div class="placeholder">
-      <div class="placeholder-icon">⚔️</div>
-      <h2>Event Data</h2>
-      <p>Record KVM, AA, GvG, and xKVM participation.</p>
-      <p style="margin-top:16px;font-size:.82rem;color:var(--text-muted)">Coming soon</p>
+    <!-- Create new event -->
+    <div class="event-bar">
+      <h3>Create New Event</h3>
+      <div class="event-bar-row">
+        <div class="form-group narrow">
+          <label>Type</label>
+          <select id="new-event-type">
+            <option value="KVM">KVM</option>
+            <option value="xKVM">xKVM</option>
+            <option value="AA">AA</option>
+            <option value="GvG">GvG</option>
+            <option value="xGvG">xGvG</option>
+          </select>
+        </div>
+        <div class="form-group narrow">
+          <label>Date</label>
+          <input type="date" id="new-event-date" />
+        </div>
+        <button class="btn btn-primary" onclick="onCreateEvent()" id="create-event-btn">+ Create Event</button>
+      </div>
+    </div>
+
+    <!-- Select existing event -->
+    <div class="event-bar">
+      <h3>Active Event</h3>
+      <div class="event-bar-row">
+        <div class="form-group" style="flex:1;min-width:250px;">
+          <select id="event-select">
+            <option value="">— Select an event —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompt & Response Workflow -->
+    <div class="workflow-section disabled" id="workflow-section">
+      <div class="workflow-step">
+        <h3>Step 1 — Copy Prompt</h3>
+        <p>Copy the parsing prompt to your clipboard, then paste it into <strong style="color:var(--text)">claude.ai</strong> along with your leaderboard screenshot(s).</p>
+        <button class="btn btn-primary" onclick="copyPrompt()">📋 Copy Prompt to Clipboard</button>
+      </div>
+      <hr class="step-divider" />
+      <div class="workflow-step">
+        <h3>Step 2 — Paste Response</h3>
+        <p>After Claude replies with JSON, copy the entire response and paste it here.</p>
+        <textarea id="response-input" placeholder="Paste Claude's JSON response here..."></textarea>
+        <button class="btn btn-primary" onclick="processResponse()" id="process-btn">Process Response</button>
+      </div>
+    </div>
+
+    <!-- Staging table -->
+    <div class="staging-section" id="staging-section" style="display:none">
+      <h3>Parsed Results — <span id="staging-count">0</span> rows</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name (from image)</th>
+              <th>Points</th>
+              <th>Status</th>
+              <th>Matched Member</th>
+              <th style="width:50px"></th>
+            </tr>
+          </thead>
+          <tbody id="staging-body"></tbody>
+        </table>
+      </div>
+      <div class="save-bar">
+        <span class="save-info" id="save-info"></span>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" onclick="clearStaging()">Clear</button>
+          <button class="btn btn-success" id="save-btn" onclick="saveResults()" disabled>Save Results</button>
+        </div>
+      </div>
     </div>
   </main>
 </div>
 
-<script type="module">
-import { initializeApp }                       from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged }         from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+<!-- ── OVERWRITE WARNING MODAL ── -->
+<div class="modal-backdrop" id="overwrite-modal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('overwrite-modal')">✕</button>
+    <h2>Overwrite Existing Results?</h2>
+    <p class="subtitle" id="overwrite-msg"></p>
+    <div id="overwrite-list" style="max-height:200px;overflow-y:auto;margin:12px 0;font-size:0.85rem;color:var(--text-muted)"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('overwrite-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmOverwrite()">Overwrite &amp; Save</button>
+    </div>
+  </div>
+</div>
 
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot,
+         getDocs, setDoc, doc, query, orderBy, where,
+         addDoc, Timestamp }        from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+// ── FIREBASE INIT ──
 const app  = initializeApp({
   apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
   authDomain:        "roxheroesdb.firebaseapp.com",
@@ -137,15 +340,62 @@ const app  = initializeApp({
   measurementId:     "G-FWNYLFLRSK"
 });
 const auth = getAuth(app);
+const db   = getFirestore(app);
 
+// ── STATE ──
+let members            = [];
+let events             = [];
+let selectedEventId    = null;
+let stagingRows        = [];
+let unsubMembers       = null;
+let unsubEvents        = null;
+let pendingEventSelect = null;
+
+// ── UTILS ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+window.showToast = function (msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `show toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+};
+
+window.openModal  = id => document.getElementById(id).classList.add('open');
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+document.querySelectorAll('.modal-backdrop').forEach(bd =>
+  bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); })
+);
+
+function friendlyAuthError(code) {
+  const map = {
+    'auth/invalid-credential':    'Invalid email or password.',
+    'auth/user-not-found':        'No account found with that email.',
+    'auth/wrong-password':        'Incorrect password.',
+    'auth/too-many-requests':     'Too many attempts. Try again later.',
+    'auth/invalid-email':         'Invalid email address.',
+  };
+  return map[code] || 'Sign in failed. Please try again.';
+}
+
+// ── AUTH ──
 onAuthStateChanged(auth, user => {
   if (user) {
     document.getElementById('user-email-display').textContent = user.email;
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app-screen').style.display  = 'flex';
+    startListeners();
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app-screen').style.display  = 'none';
+    if (unsubMembers) { unsubMembers(); unsubMembers = null; }
+    if (unsubEvents)  { unsubEvents();  unsubEvents  = null; }
+    members = []; events = [];
   }
 });
 
@@ -160,14 +410,7 @@ window.doLogin = async function () {
   try {
     await signInWithEmailAndPassword(auth, email, pw);
   } catch (e) {
-    const map = {
-      'auth/invalid-credential': 'Invalid email or password.',
-      'auth/user-not-found':     'No account found with that email.',
-      'auth/wrong-password':     'Incorrect password.',
-      'auth/too-many-requests':  'Too many attempts. Try again later.',
-      'auth/invalid-email':      'Invalid email address.',
-    };
-    err.textContent = map[e.code] || 'Sign in failed. Please try again.';
+    err.textContent = friendlyAuthError(e.code);
     btn.disabled = false; btn.textContent = 'Sign In';
   }
 };
@@ -177,6 +420,425 @@ window.doLogout = () => signOut(auth);
 document.getElementById('login-password').addEventListener('keydown', e => {
   if (e.key === 'Enter') window.doLogin();
 });
+
+// Set default date to today
+document.getElementById('new-event-date').valueAsDate = new Date();
+
+// ── FIRESTORE LISTENERS ──
+function startListeners() {
+  const mq = query(collection(db, 'members'), orderBy('name'));
+  unsubMembers = onSnapshot(mq, snap => {
+    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }, err => showToast('Failed to load members: ' + err.message, 'err'));
+
+  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
+  unsubEvents = onSnapshot(eq, snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderEventSelect();
+  }, err => showToast('Failed to load events: ' + err.message, 'err'));
+}
+
+// ── EVENT DROPDOWN ──
+function renderEventSelect() {
+  const sel = document.getElementById('event-select');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Select an event —</option>';
+  events.forEach(ev => {
+    const d = ev.date?.toDate ? ev.date.toDate() : new Date(ev.date);
+    const opt = document.createElement('option');
+    opt.value = ev.id;
+    opt.textContent = `${ev.type} — ${d.toLocaleDateString()}`;
+    sel.appendChild(opt);
+  });
+  // Auto-select newly created event, or restore previous selection
+  if (pendingEventSelect && events.find(e => e.id === pendingEventSelect)) {
+    sel.value = pendingEventSelect;
+    pendingEventSelect = null;
+  } else if (prev && events.find(e => e.id === prev)) {
+    sel.value = prev;
+  }
+  onEventChange();
+}
+
+document.getElementById('event-select').addEventListener('change', onEventChange);
+
+function onEventChange() {
+  selectedEventId = document.getElementById('event-select').value || null;
+  const section = document.getElementById('workflow-section');
+  if (selectedEventId) {
+    section.classList.remove('disabled');
+  } else {
+    section.classList.add('disabled');
+  }
+}
+
+// ── CREATE EVENT ──
+window.onCreateEvent = async function () {
+  const type = document.getElementById('new-event-type').value;
+  const dateStr = document.getElementById('new-event-date').value;
+  if (!dateStr) { showToast('Please select a date.', 'err'); return; }
+
+  // Prevent duplicate: same type + same date
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const duplicate = events.find(ev => {
+    if (ev.type !== type) return false;
+    const d = ev.date?.toDate ? ev.date.toDate() : new Date(ev.date);
+    return d.toDateString() === dateObj.toDateString();
+  });
+  if (duplicate) {
+    showToast(`A ${type} event already exists on that date.`, 'err');
+    return;
+  }
+
+  const btn = document.getElementById('create-event-btn');
+  btn.disabled = true;
+  try {
+    const ref = await addDoc(collection(db, 'events'), {
+      type,
+      date: Timestamp.fromDate(dateObj),
+    });
+    pendingEventSelect = ref.id;
+    showToast(`${type} event created.`, 'ok');
+  } catch (e) {
+    showToast('Failed to create event: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ── COPY PROMPT ──
+function buildPrompt(eventType) {
+  const memberList = members.map(m => ({ name: m.name, characterId: m.characterId || '' }));
+
+  let instruction;
+  if (eventType === 'KVM' || eventType === 'xKVM') {
+    instruction = 'Parse this KVM leaderboard screenshot.\nExtract every row. For each row return:\n  { "name": <value from Name column>, "points": <number from Points column>, "expected_character_id": <characterId or null>, "uncertain": true/false, "note": "<reason or null>" }';
+  } else if (eventType === 'AA') {
+    instruction = 'Parse this AA leaderboard screenshot.\nExtract every row. For each row return:\n  { "name": <value from Member Name column>, "points": <number from Points column>, "expected_character_id": <characterId or null>, "uncertain": true/false, "note": "<reason or null>" }';
+  } else {
+    instruction = 'Parse this GvG leaderboard screenshot.\nExtract every row. For each row return:\n  { "name": <value from Members column>, "points": <number from Merit Points column>, "expected_character_id": <characterId or null>, "uncertain": true/false, "note": "<reason or null>" }';
+  }
+
+  return `Here is the list of known guild members:\n${JSON.stringify(memberList)}\n\n${instruction}\n\nReturn the JSON array first.\nPreserve the name exactly as displayed, including special characters.\nFor expected_character_id: match against the member list provided. If the name is an exact or close match (accounting for capitalisation, symbols, or minor typos), set expected_character_id to that member's characterId. If you are not confident in the match, set expected_character_id to null.\nFor uncertain: set to true if the name was hard to read, the points were unclear, the member match is a guess, or anything else looks off. Set to false if you are confident.\nFor note: if uncertain is true, briefly explain what looked wrong (e.g. "name partially obscured", "points might be 1500 or 15000", "close match but not sure"). Set to null if uncertain is false.\nReturn rows in the exact order they appear in the image, top to bottom.\nDo not reorder, sort, or deduplicate rows.\n\nAfter the JSON array, list any entries you flagged as uncertain and explain what looked incorrect so the user can verify them.`;
+}
+
+window.copyPrompt = function () {
+  const event = events.find(e => e.id === selectedEventId);
+  if (!event) { showToast('Please select an event first.', 'err'); return; }
+
+  const prompt = buildPrompt(event.type);
+  navigator.clipboard.writeText(prompt).then(() => {
+    showToast('Prompt copied! Paste it into claude.ai with your screenshot.', 'ok');
+  }).catch(() => {
+    showToast('Failed to copy — check browser permissions.', 'err');
+  });
+};
+
+// ── PROCESS PASTED RESPONSE ──
+function extractJsonArray(text) {
+  // Strip markdown code fences
+  const stripped = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+  // Try parsing the whole thing first
+  try { const p = JSON.parse(stripped.trim()); if (Array.isArray(p)) return p; } catch (_) {}
+  // Find the outermost [ ... ] bracket pair
+  const start = stripped.indexOf('[');
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < stripped.length; i++) {
+    if (stripped[i] === '[') depth++;
+    else if (stripped[i] === ']') { depth--; if (depth === 0) {
+      try { return JSON.parse(stripped.substring(start, i + 1)); } catch (_) { return null; }
+    }}
+  }
+  return null;
+}
+
+window.processResponse = function () {
+  const raw = document.getElementById('response-input').value.trim();
+  if (!raw) { showToast('Please paste Claude\'s JSON response first.', 'err'); return; }
+
+  const parsed = extractJsonArray(raw);
+  if (!parsed) {
+    showToast('Could not find a valid JSON array. Make sure you copied the full response.', 'err');
+    return;
+  }
+
+  let uncertainCount = 0;
+  parsed.forEach(row => {
+    const charId = row.expected_character_id || null;
+    const member = charId ? members.find(m => m.characterId === charId) : null;
+    const isUncertain = row.uncertain === true;
+    if (isUncertain) uncertainCount++;
+
+    stagingRows.push({
+      nameFromImage:  row.name || '',
+      points:         parseInt(row.points) || 0,
+      status:         member ? 'matched' : 'unmatched',
+      characterId:    member ? member.characterId : null,
+      memberName:     member ? member.name : null,
+      uncertain:      isUncertain,
+      note:           isUncertain ? (row.note || 'Flagged as uncertain') : null,
+    });
+  });
+
+  document.getElementById('response-input').value = '';
+  renderStaging();
+  const msg = uncertainCount > 0
+    ? `${parsed.length} row(s) parsed — ${uncertainCount} flagged as uncertain`
+    : `${parsed.length} row(s) parsed successfully.`;
+  showToast(msg, uncertainCount > 0 ? 'err' : 'ok');
+};
+
+// ── STAGING TABLE ──
+function renderStaging() {
+  const section = document.getElementById('staging-section');
+  const tbody   = document.getElementById('staging-body');
+
+  if (stagingRows.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  document.getElementById('staging-count').textContent = stagingRows.length;
+
+  tbody.innerHTML = stagingRows.map((row, idx) => {
+    const dot = `<span class="status-dot ${row.status}"></span>`;
+    const label = row.status === 'matched' ? 'Matched' : 'Unmatched';
+    const warningDot = row.uncertain ? '<span class="status-dot uncertain" title="Uncertain"></span>' : '';
+    const noteHtml = row.note ? `<div class="uncertain-note">⚠ ${esc(row.note)}</div>` : '';
+
+    return `<tr>
+      <td>${esc(row.nameFromImage)}${noteHtml}</td>
+      <td>${row.points.toLocaleString()}</td>
+      <td>${warningDot}${dot}${label}</td>
+      <td>
+        <div class="search-select" data-row-idx="${idx}">
+          <input type="text" class="search-input" placeholder="Search name or ID..." />
+          <div class="search-dropdown"></div>
+        </div>
+      </td>
+      <td><button class="btn btn-ghost" style="padding:4px 8px;font-size:0.78rem;color:var(--danger)" onclick="deleteRow(${idx})" title="Remove row">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Set input values for matched rows (avoids quote-escaping issues in innerHTML)
+  tbody.querySelectorAll('.search-select').forEach(wrapper => {
+    const idx = parseInt(wrapper.dataset.rowIdx);
+    const row = stagingRows[idx];
+    const input = wrapper.querySelector('.search-input');
+    if (row.characterId && row.memberName) {
+      input.value = `${row.memberName} (${row.characterId})`;
+    }
+  });
+
+  updateSaveState();
+}
+
+window.resolveRow = function (idx, characterId) {
+  if (idx < 0 || idx >= stagingRows.length) return;
+  if (characterId) {
+    const m = members.find(x => x.characterId === characterId);
+    stagingRows[idx].characterId = characterId;
+    stagingRows[idx].memberName  = m ? m.name : null;
+    stagingRows[idx].status      = 'matched';
+  } else {
+    stagingRows[idx].characterId = null;
+    stagingRows[idx].memberName  = null;
+    stagingRows[idx].status      = 'unmatched';
+  }
+  renderStaging();
+};
+
+function updateSaveState() {
+  const allMatched = stagingRows.length > 0 && stagingRows.every(r => r.status === 'matched');
+  document.getElementById('save-btn').disabled = !allMatched;
+
+  const unmatched = stagingRows.filter(r => r.status !== 'matched').length;
+  const info = document.getElementById('save-info');
+  if (unmatched > 0) {
+    info.textContent = `${unmatched} unmatched row(s) — resolve all to save`;
+    info.style.color = 'var(--danger)';
+  } else if (stagingRows.length > 0) {
+    info.textContent = `All ${stagingRows.length} rows matched — ready to save`;
+    info.style.color = 'var(--success)';
+  } else {
+    info.textContent = '';
+  }
+}
+
+// ── SEARCHABLE MEMBER DROPDOWN ──
+const stagingBodyEl = document.getElementById('staging-body');
+
+stagingBodyEl.addEventListener('focus', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  e.target.select();
+  showMemberDropdown(e.target, '');
+}, true);
+
+stagingBodyEl.addEventListener('input', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  showMemberDropdown(e.target, e.target.value);
+});
+
+stagingBodyEl.addEventListener('mousedown', e => {
+  const item = e.target.closest('.search-dropdown-item');
+  if (!item) return;
+  e.preventDefault(); // prevent input blur before selection registers
+  const wrapper = item.closest('.search-select');
+  const idx = parseInt(wrapper.dataset.rowIdx);
+  const characterId = item.dataset.characterId || '';
+  window.resolveRow(idx, characterId);
+});
+
+stagingBodyEl.addEventListener('keydown', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  const wrapper = e.target.closest('.search-select');
+  const dropdown = wrapper.querySelector('.search-dropdown');
+  if (e.key === 'Enter') {
+    const first = dropdown.querySelector('.search-dropdown-item[data-character-id]:not([data-character-id=""])');
+    if (first) {
+      const idx = parseInt(wrapper.dataset.rowIdx);
+      window.resolveRow(idx, first.dataset.characterId);
+    }
+    dropdown.classList.remove('open');
+    e.target.blur();
+  } else if (e.key === 'Escape') {
+    dropdown.classList.remove('open');
+    e.target.blur();
+  }
+});
+
+stagingBodyEl.addEventListener('blur', e => {
+  if (!e.target.classList.contains('search-input')) return;
+  const target = e.target;
+  setTimeout(() => {
+    const wrapper = target.closest('.search-select');
+    if (!wrapper) return;
+    wrapper.querySelector('.search-dropdown').classList.remove('open');
+    const idx = parseInt(wrapper.dataset.rowIdx);
+    const row = stagingRows[idx];
+    target.value = (row && row.characterId && row.memberName)
+      ? `${row.memberName} (${row.characterId})`
+      : '';
+  }, 150);
+}, true);
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-select')) {
+    document.querySelectorAll('.search-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+function showMemberDropdown(input, searchText) {
+  const wrapper = input.closest('.search-select');
+  const dropdown = wrapper.querySelector('.search-dropdown');
+  const search = searchText.toLowerCase().trim();
+
+  // Close other dropdowns
+  document.querySelectorAll('.search-dropdown.open').forEach(d => {
+    if (d !== dropdown) d.classList.remove('open');
+  });
+
+  const filtered = members
+    .filter(m => {
+      if (!search) return true;
+      return (m.name || '').toLowerCase().includes(search) ||
+             (m.characterId || '').toLowerCase().includes(search);
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (filtered.length === 0) {
+    dropdown.innerHTML = '<div style="padding:8px 10px;color:var(--text-muted);font-size:0.83rem">No matches found</div>';
+  } else {
+    dropdown.innerHTML =
+      '<div class="search-dropdown-item" data-character-id="" style="color:var(--text-muted)">— None —</div>' +
+      filtered.map(m =>
+        `<div class="search-dropdown-item" data-character-id="${esc(m.characterId)}">
+          <span>${esc(m.name)}</span>
+          <span class="item-id">${esc(m.characterId)}</span>
+        </div>`
+      ).join('');
+  }
+
+  dropdown.classList.add('open');
+}
+
+window.deleteRow = function (idx) {
+  if (idx < 0 || idx >= stagingRows.length) return;
+  stagingRows.splice(idx, 1);
+  renderStaging();
+};
+
+window.clearStaging = function () {
+  stagingRows = [];
+  renderStaging();
+};
+
+// ── SAVE RESULTS ──
+window.saveResults = async function () {
+  if (!selectedEventId || stagingRows.length === 0) return;
+  if (stagingRows.some(r => r.status !== 'matched')) {
+    showToast('All rows must be matched before saving.', 'err');
+    return;
+  }
+
+  const event = events.find(e => e.id === selectedEventId);
+  if (!event) return;
+
+  // Check for existing results that would be overwritten
+  const existingSnap = await getDocs(
+    query(collection(db, 'eventResults'), where('eventId', '==', selectedEventId))
+  );
+  const existingCharIds = new Set(existingSnap.docs.map(d => d.data().characterId));
+  const overwrites = stagingRows.filter(r => existingCharIds.has(r.characterId));
+
+  if (overwrites.length > 0) {
+    document.getElementById('overwrite-msg').textContent =
+      `${overwrites.length} member(s) already have results for this event. Saving will overwrite their existing scores.`;
+    document.getElementById('overwrite-list').innerHTML = overwrites.map(r =>
+      `<div>• ${esc(r.memberName || r.nameFromImage)} — ${r.points.toLocaleString()} pts</div>`
+    ).join('');
+    openModal('overwrite-modal');
+    return;
+  }
+
+  await executeSave();
+};
+
+window.confirmOverwrite = async function () {
+  closeModal('overwrite-modal');
+  await executeSave();
+};
+
+async function executeSave() {
+  const event = events.find(e => e.id === selectedEventId);
+  if (!event) return;
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    await Promise.all(stagingRows.map(row => {
+      const compoundId = `${selectedEventId}_${row.characterId}`;
+
+      return setDoc(doc(db, 'eventResults', compoundId), {
+        characterId: row.characterId,
+        memberName:  row.memberName || row.nameFromImage,
+        eventId:     selectedEventId,
+        eventType:   event.type,
+        eventDate:   event.date,
+        points:      row.points,
+      });
+    }));
+
+    showToast(`${stagingRows.length} result(s) saved.`, 'ok');
+    stagingRows = [];
+    renderStaging();
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Results';
+  }
+}
 </script>
 </body>
 </html>
