@@ -20,13 +20,6 @@
   }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
-  #auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-  .auth-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 40px 48px; width: 380px;
-  }
-  .auth-card h1 { font-size: 1.6rem; margin-bottom: 4px; }
-  .auth-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
   .form-group { margin-bottom: 16px; }
   .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
   .form-group input {
@@ -50,7 +43,7 @@
   .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
   .btn-full { width: 100%; justify-content: center; }
 
-  #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+  #app-screen { display: flex; flex-direction: column; min-height: 100vh; }
 
   header {
     background: var(--surface); border-bottom: 1px solid var(--border);
@@ -193,29 +186,13 @@
 </head>
 <body>
 
-<div id="auth-screen">
-  <div class="auth-card">
-    <h1>HEROES</h1>
-    <p>Guild roster management</p>
-    <div class="error-msg" id="auth-error"></div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
-    </div>
-    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
-  </div>
-</div>
-
 <div id="app-screen">
   <header>
     <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
-      <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+      <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
+      <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
     </div>
   </header>
   <nav id="main-nav">
@@ -226,8 +203,8 @@
   </nav>
 
   <main>
-    <!-- Create new event -->
-    <div class="event-bar">
+    <!-- Create new event (admin only) -->
+    <div class="event-bar admin-only" id="create-event-bar" style="display:none">
       <h3>Create New Event</h3>
       <div class="event-bar-row">
         <div class="form-group narrow">
@@ -260,8 +237,8 @@
       </div>
     </div>
 
-    <!-- Prompt & Response Workflow -->
-    <div class="workflow-section disabled" id="workflow-section">
+    <!-- Prompt & Response Workflow (admin only) -->
+    <div class="workflow-section disabled admin-only" id="workflow-section" style="display:none">
       <div class="workflow-step">
         <h3>Step 1 — Copy Prompt</h3>
         <p>Copy the parsing prompt to your clipboard, then paste it into <strong style="color:var(--text)">claude.ai</strong> along with your leaderboard screenshot(s).</p>
@@ -276,8 +253,8 @@
       </div>
     </div>
 
-    <!-- Staging table -->
-    <div class="staging-section" id="staging-section" style="display:none">
+    <!-- Staging table (admin only) -->
+    <div class="staging-section admin-only" id="staging-section" style="display:none">
       <h3>Parsed Results — <span id="staging-count">0</span> rows</h3>
       <div class="table-wrap">
         <table>
@@ -302,6 +279,25 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-backdrop" id="login-modal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <h2>Admin Sign In</h2>
+    <p class="subtitle">Sign in to manage events and results.</p>
+    <div class="error-msg" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
 </div>
 
 <!-- ── OVERWRITE WARNING MODAL ── -->
@@ -350,6 +346,7 @@ let stagingRows        = [];
 let unsubMembers       = null;
 let unsubEvents        = null;
 let pendingEventSelect = null;
+let isAdmin            = false;
 
 // ── UTILS ──
 function esc(str) {
@@ -386,16 +383,19 @@ function friendlyAuthError(code) {
 // ── AUTH ──
 onAuthStateChanged(auth, user => {
   if (user) {
+    isAdmin = true;
     document.getElementById('user-email-display').textContent = user.email;
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display  = 'flex';
-    startListeners();
+    document.getElementById('admin-login-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    closeModal('login-modal');
+    onEventChange(); // re-check workflow enabled state
   } else {
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('app-screen').style.display  = 'none';
-    if (unsubMembers) { unsubMembers(); unsubMembers = null; }
-    if (unsubEvents)  { unsubEvents();  unsubEvents  = null; }
-    members = []; events = [];
+    isAdmin = false;
+    document.getElementById('user-email-display').textContent = '';
+    document.getElementById('admin-login-btn').style.display = '';
+    document.getElementById('logout-btn').style.display = 'none';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
   }
 });
 
@@ -424,8 +424,10 @@ document.getElementById('login-password').addEventListener('keydown', e => {
 // Set default date to today
 document.getElementById('new-event-date').valueAsDate = new Date();
 
-// ── FIRESTORE LISTENERS ──
+// ── FIRESTORE LISTENERS (start immediately) ──
 function startListeners() {
+  if (unsubMembers) return;
+
   const mq = query(collection(db, 'members'), orderBy('name'));
   unsubMembers = onSnapshot(mq, snap => {
     members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -437,6 +439,7 @@ function startListeners() {
     renderEventSelect();
   }, err => showToast('Failed to load events: ' + err.message, 'err'));
 }
+startListeners();
 
 // ── EVENT DROPDOWN ──
 function renderEventSelect() {
@@ -465,7 +468,7 @@ document.getElementById('event-select').addEventListener('change', onEventChange
 function onEventChange() {
   selectedEventId = document.getElementById('event-select').value || null;
   const section = document.getElementById('workflow-section');
-  if (selectedEventId) {
+  if (selectedEventId && isAdmin) {
     section.classList.remove('disabled');
   } else {
     section.classList.add('disabled');
@@ -595,7 +598,7 @@ function renderStaging() {
   const tbody   = document.getElementById('staging-body');
 
   if (stagingRows.length === 0) { section.style.display = 'none'; return; }
-  section.style.display = 'block';
+  if (isAdmin) section.style.display = 'block';
   document.getElementById('staging-count').textContent = stagingRows.length;
 
   tbody.innerHTML = stagingRows.map((row, idx) => {

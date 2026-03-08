@@ -21,15 +21,6 @@
   }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
-  /* ── AUTH ── */
-  #auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-  .auth-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 40px 48px; width: 380px;
-  }
-  .auth-card h1 { font-size: 1.6rem; margin-bottom: 4px; }
-  .auth-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
-
   .form-group { margin-bottom: 16px; }
   .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
   .form-group input, .form-group select, .form-group textarea {
@@ -61,7 +52,7 @@
   .btn-full { width: 100%; justify-content: center; }
 
   /* ── APP ── */
-  #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+  #app-screen { display: flex; flex-direction: column; min-height: 100vh; }
 
   header {
     background: var(--surface); border-bottom: 1px solid var(--border);
@@ -160,31 +151,14 @@
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
-<div id="auth-screen">
-  <div class="auth-card">
-    <h1>HEROES</h1>
-    <p>Guild roster management</p>
-    <div class="error-msg" id="auth-error"></div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
-    </div>
-    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
-  </div>
-</div>
-
 <!-- ── APP ── -->
 <div id="app-screen">
   <header>
     <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
-      <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+      <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
+      <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
     </div>
   </header>
   <nav id="main-nav">
@@ -197,7 +171,7 @@
   <main>
     <div class="toolbar">
       <input class="search-box" type="text" placeholder="Search by name or ID..." id="search-input" oninput="renderTable()" />
-      <div class="toolbar-actions">
+      <div class="toolbar-actions" id="admin-toolbar" style="display:none">
         <button class="btn btn-ghost" onclick="openImport()">Import Members</button>
         <button class="btn btn-primary" onclick="openAdd()">+ Add Member</button>
       </div>
@@ -212,7 +186,7 @@
             <th onclick="sortBy('level')">Level <span class="sort-icon" id="sort-level">↕</span></th>
             <th onclick="sortBy('weeklyContribution')">7-day Contrib <span class="sort-icon" id="sort-weeklyContribution">↕</span></th>
             <th onclick="sortBy('attempts')">Attempts <span class="sort-icon" id="sort-attempts">↕</span></th>
-            <th></th>
+            <th id="actions-th"></th>
           </tr>
         </thead>
         <tbody id="roster-body">
@@ -222,10 +196,29 @@
       <div class="empty-state" id="empty-state" style="display:none">
         <div class="empty-icon">🛡️</div>
         <div>No members found</div>
-        <div style="font-size:.8rem;margin-top:6px">Import a list or add members manually</div>
+        <div style="font-size:.8rem;margin-top:6px" id="empty-hint">No roster data available yet</div>
       </div>
     </div>
   </main>
+</div>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-backdrop" id="login-modal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <h2>Admin Sign In</h2>
+    <p class="subtitle">Sign in to manage the roster.</p>
+    <div class="error-msg" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
 </div>
 
 <!-- ── IMPORT MODAL ── -->
@@ -334,24 +327,32 @@ let sortDir        = 1;
 let pendingImport  = [];
 let deleteTargetId = null;
 let unsubscribe    = null;
+let isAdmin        = false;
 
 // ── AUTH STATE ──
 onAuthStateChanged(auth, user => {
   if (user) {
+    isAdmin = true;
     document.getElementById('user-email-display').textContent = user.email;
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display  = 'flex';
-    startListener();
+    document.getElementById('admin-login-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    document.getElementById('admin-toolbar').style.display = '';
+    document.getElementById('empty-hint').textContent = 'Import a list or add members manually';
+    closeModal('login-modal');
   } else {
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('app-screen').style.display  = 'none';
-    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-    members = [];
+    isAdmin = false;
+    document.getElementById('user-email-display').textContent = '';
+    document.getElementById('admin-login-btn').style.display = '';
+    document.getElementById('logout-btn').style.display = 'none';
+    document.getElementById('admin-toolbar').style.display = 'none';
+    document.getElementById('empty-hint').textContent = 'No roster data available yet';
   }
+  renderTable();
 });
 
-// ── FIRESTORE LISTENER ──
+// ── FIRESTORE LISTENER (starts immediately for all users) ──
 function startListener() {
+  if (unsubscribe) return;
   const q = query(collection(db, 'members'), orderBy('name'));
   unsubscribe = onSnapshot(q, snap => {
     members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -360,6 +361,7 @@ function startListener() {
     showToast('Failed to load roster: ' + err.message, 'err');
   });
 }
+startListener();
 
 // ── AUTH ──
 window.doLogin = async function () {
@@ -412,6 +414,10 @@ window.renderTable = function () {
 
   const tbody = document.getElementById('roster-body');
   const empty = document.getElementById('empty-state');
+  const colSpan = isAdmin ? 6 : 5;
+
+  // Show/hide actions column header
+  document.getElementById('actions-th').style.display = isAdmin ? '' : 'none';
 
   if (rows.length === 0) {
     tbody.innerHTML = '';
@@ -425,12 +431,12 @@ window.renderTable = function () {
         <td>${m.level ?? '—'}</td>
         <td>${(m.weeklyContribution ?? 0).toLocaleString()}</td>
         <td>${m.attempts ?? '—'}</td>
-        <td>
+        ${isAdmin ? `<td>
           <div class="row-actions">
             <button class="icon-btn edit" title="Edit"   onclick="openEdit('${m.id}')">✏️</button>
             <button class="icon-btn del"  title="Delete" onclick="askDelete('${m.id}')">🗑️</button>
           </div>
-        </td>
+        </td>` : ''}
       </tr>`).join('');
   }
 
