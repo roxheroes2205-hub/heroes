@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HEROES — Teams</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #5b7fff;
+    --accent-hover: #4a6eff;
+    --danger: #e05252;
+    --text: #e8eaf0;
+    --text-muted: #7a7f9a;
+    --success: #3ecf8e;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+  .form-group input, .form-group select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; outline: none;
+    transition: border-color .15s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
+  .error-msg { color: var(--danger); font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+    border-radius: 7px; border: none; cursor: pointer; font-size: 0.9rem;
+    font-weight: 500; transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-danger:hover:not(:disabled) { background: #c94444; }
+  .btn-success { background: var(--success); color: #000; }
+
+  #app-screen { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-size: 1.1rem; font-weight: 700; }
+  header .logo span { color: var(--accent); }
+  header .user-area { display: flex; align-items: center; gap: 12px; }
+  header .user-email { color: var(--text-muted); font-size: 0.85rem; }
+
+  #main-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; }
+  #main-nav a { padding: 12px 20px; color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+  #main-nav a:hover { color: var(--text); }
+  #main-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  main { padding: 28px 24px; flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 12px 20px;
+    font-size: 0.9rem; z-index: 999; opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-ok  { border-color: var(--success); color: var(--success); }
+  #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 32px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    position: relative;
+  }
+  .modal h2 { font-size: 1.15rem; margin-bottom: 6px; }
+  .modal .subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 22px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 18px; background: none; border: none;
+    color: var(--text-muted); font-size: 1.3rem; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .toolbar select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 9px 14px; color: var(--text); font-size: 0.9rem; outline: none;
+  }
+  .toolbar select:focus { border-color: var(--accent); }
+  .toolbar select option { background: var(--surface2); }
+  .search-box {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 9px 14px; color: var(--text); font-size: 0.9rem; outline: none; width: 220px;
+  }
+  .search-box:focus { border-color: var(--accent); }
+
+  /* ── TEAM BUILDER LAYOUT ── */
+  .teams-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .teams-layout { grid-template-columns: 1fr; }
+  }
+
+  /* ── BENCH (unassigned pool) ── */
+  .bench-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; position: sticky; top: 80px; max-height: calc(100vh - 100px);
+    display: flex; flex-direction: column;
+  }
+  .bench-header {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    font-size: 0.82rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;
+  }
+  .bench-search {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+  }
+  .bench-search input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; color: var(--text); font-size: 0.85rem; outline: none;
+  }
+  .bench-search input:focus { border-color: var(--accent); }
+  .bench-list {
+    overflow-y: auto; flex: 1; padding: 6px 0;
+  }
+
+  /* ── MEMBER CHIP ── */
+  .member-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; cursor: grab; transition: background .1s;
+    user-select: none;
+  }
+  .member-chip:hover { background: var(--surface2); }
+  .member-chip.dragging { opacity: 0.4; }
+  .member-chip .chip-name { font-size: 0.88rem; flex: 1; }
+  .member-chip .chip-stat {
+    font-size: 0.78rem; color: var(--text-muted); text-align: right; min-width: 50px;
+  }
+  .member-chip .chip-level {
+    font-size: 0.72rem; color: var(--text-muted); background: var(--surface2);
+    padding: 2px 6px; border-radius: 4px;
+  }
+
+  /* ── TEAMS GRID ── */
+  .teams-area { display: flex; flex-direction: column; gap: 16px; }
+
+  .team-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden;
+  }
+  .team-card.drag-over { border-color: var(--accent); background: rgba(91,127,255,0.05); }
+
+  .team-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .team-header-left { display: flex; align-items: center; gap: 10px; }
+  .team-title {
+    font-size: 0.95rem; font-weight: 600;
+    background: none; border: none; color: var(--text); outline: none;
+    padding: 2px 4px; border-radius: 4px; min-width: 80px;
+  }
+  .team-title:focus { background: var(--surface2); border: 1px solid var(--border); }
+  .team-count {
+    font-size: 0.78rem; color: var(--text-muted); background: var(--surface2);
+    padding: 2px 8px; border-radius: 10px;
+  }
+  .team-stats {
+    display: flex; gap: 14px; font-size: 0.78rem; color: var(--text-muted);
+  }
+  .team-stat-val { color: var(--text); font-weight: 500; }
+
+  .team-body {
+    min-height: 48px; padding: 4px 0;
+  }
+  .team-body.empty-hint {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 0.82rem; font-style: italic;
+    min-height: 64px;
+  }
+
+  .team-member {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; cursor: grab; transition: background .1s;
+    user-select: none;
+  }
+  .team-member:hover { background: var(--surface2); }
+  .team-member.dragging { opacity: 0.4; }
+  .team-member .tm-name { font-size: 0.88rem; flex: 1; }
+  .team-member .tm-stat { font-size: 0.78rem; color: var(--text-muted); min-width: 50px; text-align: right; }
+  .team-member .tm-level { font-size: 0.72rem; color: var(--text-muted); background: var(--surface2); padding: 2px 6px; border-radius: 4px; }
+  .team-member .tm-remove {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1;
+  }
+  .team-member .tm-remove:hover { color: var(--danger); background: rgba(224,82,82,0.1); }
+
+  /* ── SAVED COMPOSITIONS ── */
+  .saved-list { margin-top: 24px; }
+  .saved-list h3 {
+    font-size: 0.82rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); margin-bottom: 12px;
+  }
+  .saved-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px; cursor: pointer; transition: background .1s;
+  }
+  .saved-item:hover { background: var(--surface2); }
+  .saved-item-info { display: flex; flex-direction: column; gap: 2px; }
+  .saved-item-name { font-size: 0.9rem; font-weight: 500; }
+  .saved-item-meta { font-size: 0.78rem; color: var(--text-muted); }
+  .saved-item-actions { display: flex; gap: 6px; }
+
+  /* ── EVENT TYPE PILLS ── */
+  .event-pill {
+    display: inline-block; padding: 2px 10px; border-radius: 10px;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: .03em;
+  }
+  .event-pill.type-KVM  { background: var(--accent); color: #fff; }
+  .event-pill.type-xKVM { background: #7c5bff; color: #fff; }
+  .event-pill.type-AA   { background: var(--success); color: #000; }
+  .event-pill.type-GvG  { background: #f0ad4e; color: #000; }
+  .event-pill.type-xGvG { background: var(--danger); color: #fff; }
+
+  /* ── AUTO ASSIGN ── */
+  .auto-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 20px;
+  }
+  .auto-section h3 {
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); margin-bottom: 12px;
+  }
+  .auto-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .auto-controls label { font-size: 0.85rem; color: var(--text-muted); }
+  .auto-controls select, .auto-controls input[type="number"] {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; color: var(--text); font-size: 0.85rem; outline: none; width: auto;
+  }
+  .auto-controls input[type="number"] { width: 60px; }
+</style>
+</head>
+<body>
+<div id="login-screen" style="display:none">
+  <!-- Auth handled inline -->
+</div>
+<div id="app-screen">
+  <header>
+    <div class="logo">HEROES</div>
+    <div class="user-area">
+      <span class="user-email" id="user-email-display"></span>
+      <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
+      <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
+    </div>
+  </header>
+  <nav id="main-nav">
+    <a href="index.html">Home</a>
+    <a href="members.html">Members</a>
+    <a href="events.html">Events</a>
+    <a href="distribution.html">Distribution</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="teams.html" class="active">Teams</a>
+    <a href="teams-gvg.html">GvG Teams</a>
+  </nav>
+
+  <main>
+    <div class="toolbar">
+      <select id="event-type-select" onchange="onEventTypeChange()">
+        <option value="KVM">KVM</option>
+        <option value="xKVM">xKVM</option>
+        <option value="AA">AA</option>
+        <option value="GvG">GvG</option>
+        <option value="xGvG">xGvG</option>
+      </select>
+      <div class="auto-controls">
+        <label>Teams:</label>
+        <input type="number" id="team-count-input" min="1" max="10" value="3" />
+        <button class="btn btn-ghost" onclick="setTeamCount()">Set</button>
+        <button class="btn btn-ghost" onclick="autoBalance()">Auto-Balance</button>
+        <button class="btn btn-ghost" onclick="clearAllTeams()">Clear All</button>
+      </div>
+      <div style="flex:1"></div>
+      <div class="admin-only" style="display:none">
+        <button class="btn btn-primary" onclick="openSaveModal()">Save Composition</button>
+      </div>
+    </div>
+
+    <div class="teams-layout">
+      <!-- BENCH: Unassigned members -->
+      <div class="bench-panel">
+        <div class="bench-header">
+          <span>Unassigned</span>
+          <span id="bench-count">0</span>
+        </div>
+        <div class="bench-search">
+          <input type="text" placeholder="Search members..." id="bench-search-input" oninput="renderBench()" />
+        </div>
+        <div class="bench-list" id="bench-list"></div>
+      </div>
+
+      <!-- TEAMS -->
+      <div class="teams-area" id="teams-area"></div>
+    </div>
+
+    <!-- SAVED COMPOSITIONS -->
+    <div class="saved-list">
+      <h3>Saved Compositions</h3>
+      <div id="saved-compositions-list">
+        <div style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">Loading...</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-backdrop" id="login-modal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeModal('login-modal')">&#10005;</button>
+    <h2>Admin Sign In</h2>
+    <p class="subtitle">Sign in to manage teams.</p>
+    <div class="error-msg" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── SAVE COMPOSITION MODAL ── -->
+<div class="modal-backdrop" id="save-modal">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeModal('save-modal')">&#10005;</button>
+    <h2>Save Team Composition</h2>
+    <p class="subtitle">Give this composition a name so you can load it later.</p>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="save-comp-name" placeholder="e.g. Week 10 KVM" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('save-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveComposition()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE COMPOSITION MODAL ── -->
+<div class="modal-backdrop" id="delete-comp-modal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeModal('delete-comp-modal')">&#10005;</button>
+    <h2>Delete Composition</h2>
+    <p style="margin:14px 0;color:var(--text-muted)">Remove <strong id="delete-comp-name" style="color:var(--danger)"></strong>? This cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('delete-comp-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeleteComp()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot,
+         getDocs, setDoc, deleteDoc, doc, query, orderBy, where,
+         addDoc, Timestamp, serverTimestamp }        from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+// ── FIREBASE INIT ──
+const app  = initializeApp({
+  apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
+  authDomain:        "roxheroesdb.firebaseapp.com",
+  projectId:         "roxheroesdb",
+  storageBucket:     "roxheroesdb.firebasestorage.app",
+  messagingSenderId: "473597354749",
+  appId:             "1:473597354749:web:2bb66b1db6c3dc1a241494",
+  measurementId:     "G-FWNYLFLRSK"
+});
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── STATE ──
+let members          = [];
+let events           = [];
+let eventResults     = [];  // all eventResults for recent events of selected type
+let isAdmin          = false;
+let compositions     = [];  // saved team compositions
+let deleteCompId     = null;
+
+// Team builder state
+let teams            = [];  // array of { name, memberIds: [] }
+let benchIds         = [];  // member IDs not assigned to any team
+let memberAvgPoints  = {};  // characterId -> avg points from recent events
+
+// Drag state
+let dragMemberId     = null;
+let dragSource       = null; // 'bench' | team index
+
+// ── UTILS ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+window.showToast = function (msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `show toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+};
+
+window.openModal  = id => document.getElementById(id).classList.add('open');
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+document.querySelectorAll('.modal-backdrop').forEach(bd =>
+  bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); })
+);
+
+function friendlyAuthError(code) {
+  const map = {
+    'auth/invalid-credential':    'Invalid email or password.',
+    'auth/user-not-found':        'No account found with that email.',
+    'auth/wrong-password':        'Incorrect password.',
+    'auth/too-many-requests':     'Too many attempts. Try again later.',
+    'auth/invalid-email':         'Invalid email address.',
+  };
+  return map[code] || 'Sign in failed. Please try again.';
+}
+
+// ── AUTH ──
+onAuthStateChanged(auth, user => {
+  if (user) {
+    isAdmin = true;
+    document.getElementById('user-email-display').textContent = user.email;
+    document.getElementById('admin-login-btn').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    closeModal('login-modal');
+  } else {
+    isAdmin = false;
+    document.getElementById('user-email-display').textContent = '';
+    document.getElementById('admin-login-btn').style.display = '';
+    document.getElementById('logout-btn').style.display = 'none';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  }
+});
+
+window.doLogin = async function () {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  const err   = document.getElementById('auth-error');
+  const btn   = document.getElementById('login-btn');
+  err.textContent = '';
+  if (!email || !pw) { err.textContent = 'Please enter email and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    err.textContent = friendlyAuthError(e.code);
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+};
+
+window.doLogout = () => signOut(auth);
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.doLogin();
+});
+
+// ── FIRESTORE LISTENERS ──
+function startListeners() {
+  const mq = query(collection(db, 'members'), orderBy('name'));
+  onSnapshot(mq, snap => {
+    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    rebuildBench();
+    renderAll();
+  });
+
+  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
+  onSnapshot(eq, snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    loadEventResults();
+  });
+
+  const cq = query(collection(db, 'teamCompositions'), orderBy('createdAt', 'desc'));
+  onSnapshot(cq, snap => {
+    compositions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSavedCompositions();
+  });
+}
+startListeners();
+
+// ── LOAD EVENT RESULTS FOR SELECTED TYPE ──
+async function loadEventResults() {
+  const selectedType = document.getElementById('event-type-select').value;
+
+  // Find recent events of this type (last 10)
+  const typeEvents = events.filter(e => e.type === selectedType).slice(0, 10);
+  if (typeEvents.length === 0) {
+    eventResults = [];
+    computeAverages();
+    renderAll();
+    return;
+  }
+
+  const eventIds = typeEvents.map(e => e.id);
+
+  // Firestore 'in' queries support max 30 values
+  const rq = query(collection(db, 'eventResults'), where('eventId', 'in', eventIds));
+  try {
+    const snap = await getDocs(rq);
+    eventResults = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+  } catch (e) {
+    eventResults = [];
+  }
+
+  computeAverages();
+  renderAll();
+}
+
+function computeAverages() {
+  memberAvgPoints = {};
+  // Group results by characterId
+  const byChar = {};
+  eventResults.forEach(r => {
+    const cid = r.characterId;
+    if (!cid) return;
+    if (!byChar[cid]) byChar[cid] = [];
+    byChar[cid].push(r.points || 0);
+  });
+  for (const [cid, pts] of Object.entries(byChar)) {
+    memberAvgPoints[cid] = Math.round(pts.reduce((a, b) => a + b, 0) / pts.length);
+  }
+}
+
+// ── EVENT TYPE CHANGE ──
+window.onEventTypeChange = function () {
+  loadEventResults();
+};
+
+// ── TEAM MANAGEMENT ──
+function initTeams(count) {
+  teams = [];
+  for (let i = 0; i < count; i++) {
+    teams.push({ name: `Team ${i + 1}`, memberIds: [] });
+  }
+  rebuildBench();
+  renderAll();
+}
+initTeams(3);
+
+function rebuildBench() {
+  const assigned = new Set();
+  teams.forEach(t => t.memberIds.forEach(id => assigned.add(id)));
+  benchIds = members.filter(m => !assigned.has(m.id)).map(m => m.id);
+}
+
+window.setTeamCount = function () {
+  const count = parseInt(document.getElementById('team-count-input').value) || 3;
+  if (count < 1 || count > 10) { showToast('Team count must be 1-10', 'err'); return; }
+
+  // Preserve existing teams up to the new count, add new ones if needed
+  if (count > teams.length) {
+    for (let i = teams.length; i < count; i++) {
+      teams.push({ name: `Team ${i + 1}`, memberIds: [] });
+    }
+  } else if (count < teams.length) {
+    // Move members from removed teams back to bench
+    for (let i = count; i < teams.length; i++) {
+      benchIds.push(...teams[i].memberIds);
+    }
+    teams = teams.slice(0, count);
+  }
+  renderAll();
+};
+
+window.clearAllTeams = function () {
+  teams.forEach(t => t.memberIds = []);
+  rebuildBench();
+  renderAll();
+};
+
+// ── AUTO-BALANCE: Distribute members across teams by average points ──
+window.autoBalance = function () {
+  // Collect all member IDs (bench + all teams)
+  const allIds = [...benchIds];
+  teams.forEach(t => { allIds.push(...t.memberIds); t.memberIds = []; });
+
+  // Sort by average points descending (snake draft)
+  allIds.sort((a, b) => {
+    const ma = members.find(m => m.id === a);
+    const mb = members.find(m => m.id === b);
+    const pa = ma ? (memberAvgPoints[ma.characterId] || 0) : 0;
+    const pb = mb ? (memberAvgPoints[mb.characterId] || 0) : 0;
+    return pb - pa;
+  });
+
+  // Snake draft: round 1 = left-to-right, round 2 = right-to-left, etc.
+  let forward = true;
+  let teamIdx = 0;
+  allIds.forEach(id => {
+    teams[teamIdx].memberIds.push(id);
+    if (forward) {
+      teamIdx++;
+      if (teamIdx >= teams.length) { teamIdx = teams.length - 1; forward = false; }
+    } else {
+      teamIdx--;
+      if (teamIdx < 0) { teamIdx = 0; forward = true; }
+    }
+  });
+
+  benchIds = [];
+  renderAll();
+  showToast('Teams auto-balanced by avg points', 'ok');
+};
+
+// ── DRAG & DROP ──
+function onDragStart(e, memberId, source) {
+  dragMemberId = memberId;
+  dragSource = source;
+  e.dataTransfer.effectAllowed = 'move';
+  e.target.classList.add('dragging');
+}
+
+function onDragEnd(e) {
+  e.target.classList.remove('dragging');
+  dragMemberId = null;
+  dragSource = null;
+  // Remove all drag-over highlights
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function onDragOverTeam(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragEnterTeam(e, teamCard) {
+  e.preventDefault();
+  teamCard.classList.add('drag-over');
+}
+
+function onDragLeaveTeam(e, teamCard) {
+  // Only remove if leaving the card entirely
+  if (!teamCard.contains(e.relatedTarget)) {
+    teamCard.classList.remove('drag-over');
+  }
+}
+
+function onDropTeam(e, teamIdx) {
+  e.preventDefault();
+  const card = e.currentTarget;
+  card.classList.remove('drag-over');
+
+  if (!dragMemberId) return;
+
+  // Remove from source
+  if (dragSource === 'bench') {
+    benchIds = benchIds.filter(id => id !== dragMemberId);
+  } else if (typeof dragSource === 'number') {
+    teams[dragSource].memberIds = teams[dragSource].memberIds.filter(id => id !== dragMemberId);
+  }
+
+  // Add to target team
+  if (!teams[teamIdx].memberIds.includes(dragMemberId)) {
+    teams[teamIdx].memberIds.push(dragMemberId);
+  }
+
+  dragMemberId = null;
+  dragSource = null;
+  renderAll();
+}
+
+function onDropBench(e) {
+  e.preventDefault();
+  if (!dragMemberId) return;
+
+  // Remove from source team
+  if (typeof dragSource === 'number') {
+    teams[dragSource].memberIds = teams[dragSource].memberIds.filter(id => id !== dragMemberId);
+  }
+
+  // Add to bench if not already there
+  if (!benchIds.includes(dragMemberId)) {
+    benchIds.push(dragMemberId);
+  }
+
+  dragMemberId = null;
+  dragSource = null;
+  renderAll();
+}
+
+// Click-to-assign: click a bench member to add to the team with fewest members
+function clickAssign(memberId) {
+  // Find team with fewest members
+  let minIdx = 0;
+  let minCount = teams[0].memberIds.length;
+  for (let i = 1; i < teams.length; i++) {
+    if (teams[i].memberIds.length < minCount) {
+      minCount = teams[i].memberIds.length;
+      minIdx = i;
+    }
+  }
+  benchIds = benchIds.filter(id => id !== memberId);
+  teams[minIdx].memberIds.push(memberId);
+  renderAll();
+}
+
+// Remove member from team back to bench
+window.removeFromTeam = function (teamIdx, memberId) {
+  teams[teamIdx].memberIds = teams[teamIdx].memberIds.filter(id => id !== memberId);
+  benchIds.push(memberId);
+  renderAll();
+};
+
+// ── RENDER ──
+function getMemberStat(member) {
+  if (!member) return '';
+  const avg = memberAvgPoints[member.characterId];
+  if (avg !== undefined) return `${avg} avg`;
+  return '';
+}
+
+function renderBench() {
+  const list = document.getElementById('bench-list');
+  const searchVal = document.getElementById('bench-search-input').value.toLowerCase();
+
+  const filtered = benchIds
+    .map(id => members.find(m => m.id === id))
+    .filter(m => m && m.name.toLowerCase().includes(searchVal));
+
+  document.getElementById('bench-count').textContent = benchIds.length;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.82rem;font-style:italic;">
+      ${benchIds.length === 0 ? 'All members assigned' : 'No matches'}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(m => {
+    const stat = getMemberStat(m);
+    return `<div class="member-chip" draggable="true" data-id="${esc(m.id)}"
+                 ondblclick="clickAssign('${esc(m.id)}')">
+      <span class="chip-level">Lv${esc(String(m.level || '?'))}</span>
+      <span class="chip-name">${esc(m.name)}</span>
+      <span class="chip-stat">${esc(stat)}</span>
+    </div>`;
+  }).join('');
+
+  // Attach drag listeners
+  list.querySelectorAll('.member-chip').forEach(chip => {
+    const id = chip.dataset.id;
+    chip.addEventListener('dragstart', e => onDragStart(e, id, 'bench'));
+    chip.addEventListener('dragend', onDragEnd);
+  });
+}
+
+function renderTeams() {
+  const area = document.getElementById('teams-area');
+
+  area.innerHTML = teams.map((team, idx) => {
+    const teamMembers = team.memberIds.map(id => members.find(m => m.id === id)).filter(Boolean);
+    const totalAvg = teamMembers.reduce((s, m) => s + (memberAvgPoints[m.characterId] || 0), 0);
+    const avgPerMember = teamMembers.length > 0 ? Math.round(totalAvg / teamMembers.length) : 0;
+
+    const bodyHtml = teamMembers.length === 0
+      ? `<div class="team-body empty-hint">Drop members here or double-click from bench</div>`
+      : `<div class="team-body">${teamMembers.map(m => {
+          const stat = getMemberStat(m);
+          return `<div class="team-member" draggable="true" data-id="${esc(m.id)}" data-team="${idx}">
+            <span class="tm-level">Lv${esc(String(m.level || '?'))}</span>
+            <span class="tm-name">${esc(m.name)}</span>
+            <span class="tm-stat">${esc(stat)}</span>
+            <button class="tm-remove" onclick="removeFromTeam(${idx},'${esc(m.id)}')" title="Remove">&#10005;</button>
+          </div>`;
+        }).join('')}</div>`;
+
+    return `<div class="team-card" data-team-idx="${idx}">
+      <div class="team-header">
+        <div class="team-header-left">
+          <input class="team-title" value="${esc(team.name)}" data-team-idx="${idx}"
+                 onchange="renameTeam(${idx}, this.value)" />
+          <span class="team-count">${teamMembers.length}</span>
+        </div>
+        <div class="team-stats">
+          <span>Total: <span class="team-stat-val">${totalAvg}</span></span>
+          <span>Avg: <span class="team-stat-val">${avgPerMember}</span></span>
+        </div>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  }).join('');
+
+  // Attach drag listeners to team cards (drop targets)
+  area.querySelectorAll('.team-card').forEach(card => {
+    const idx = parseInt(card.dataset.teamIdx);
+    card.addEventListener('dragover', onDragOverTeam);
+    card.addEventListener('dragenter', e => onDragEnterTeam(e, card));
+    card.addEventListener('dragleave', e => onDragLeaveTeam(e, card));
+    card.addEventListener('drop', e => onDropTeam(e, idx));
+  });
+
+  // Attach drag listeners to team members
+  area.querySelectorAll('.team-member[draggable]').forEach(el => {
+    const id = el.dataset.id;
+    const teamIdx = parseInt(el.dataset.team);
+    el.addEventListener('dragstart', e => onDragStart(e, id, teamIdx));
+    el.addEventListener('dragend', onDragEnd);
+  });
+}
+
+window.renameTeam = function (idx, newName) {
+  teams[idx].name = newName.trim() || `Team ${idx + 1}`;
+};
+
+function renderAll() {
+  renderBench();
+  renderTeams();
+}
+
+// Bench drop target
+const benchPanel = document.querySelector('.bench-panel');
+benchPanel.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+benchPanel.addEventListener('drop', onDropBench);
+
+// ── SAVE / LOAD COMPOSITIONS ──
+window.openSaveModal = function () {
+  document.getElementById('save-comp-name').value = '';
+  openModal('save-modal');
+};
+
+window.saveComposition = async function () {
+  const name = document.getElementById('save-comp-name').value.trim();
+  if (!name) { showToast('Please enter a name.', 'err'); return; }
+
+  const eventType = document.getElementById('event-type-select').value;
+  const data = {
+    name,
+    eventType,
+    teams: teams.map(t => ({ name: t.name, memberIds: [...t.memberIds] })),
+    createdAt: serverTimestamp(),
+  };
+
+  try {
+    await addDoc(collection(db, 'teamCompositions'), data);
+    showToast('Composition saved!', 'ok');
+    closeModal('save-modal');
+  } catch (e) {
+    showToast('Failed to save: ' + e.message, 'err');
+  }
+};
+
+window.loadComposition = function (compId) {
+  const comp = compositions.find(c => c.id === compId);
+  if (!comp) return;
+
+  document.getElementById('event-type-select').value = comp.eventType || 'KVM';
+  teams = (comp.teams || []).map(t => ({
+    name: t.name,
+    memberIds: (t.memberIds || []).filter(id => members.some(m => m.id === id)),
+  }));
+  document.getElementById('team-count-input').value = teams.length;
+  rebuildBench();
+  loadEventResults();
+  showToast(`Loaded "${comp.name}"`, 'ok');
+};
+
+window.askDeleteComp = function (compId, compName) {
+  deleteCompId = compId;
+  document.getElementById('delete-comp-name').textContent = compName;
+  openModal('delete-comp-modal');
+};
+
+window.confirmDeleteComp = async function () {
+  if (!deleteCompId) return;
+  try {
+    await deleteDoc(doc(db, 'teamCompositions', deleteCompId));
+    showToast('Composition deleted.', 'ok');
+  } catch (e) {
+    showToast('Failed to delete: ' + e.message, 'err');
+  }
+  deleteCompId = null;
+  closeModal('delete-comp-modal');
+};
+
+function renderSavedCompositions() {
+  const container = document.getElementById('saved-compositions-list');
+  if (compositions.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;font-style:italic;">No saved compositions yet.</div>';
+    return;
+  }
+
+  container.innerHTML = compositions.map(c => {
+    const teamCount = (c.teams || []).length;
+    const totalMembers = (c.teams || []).reduce((s, t) => s + (t.memberIds || []).length, 0);
+    const dateStr = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : '';
+    return `<div class="saved-item">
+      <div class="saved-item-info" onclick="loadComposition('${esc(c.id)}')" style="flex:1;cursor:pointer;">
+        <span class="saved-item-name">${esc(c.name)}</span>
+        <span class="saved-item-meta">
+          <span class="event-pill type-${esc(c.eventType || 'KVM')}">${esc(c.eventType || 'KVM')}</span>
+          ${teamCount} teams &middot; ${totalMembers} members &middot; ${dateStr}
+        </span>
+      </div>
+      <div class="saved-item-actions admin-only" ${isAdmin ? '' : 'style="display:none"'}>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:0.8rem;" onclick="loadComposition('${esc(c.id)}')">Load</button>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:0.8rem;color:var(--danger);" onclick="askDeleteComp('${esc(c.id)}','${esc(c.name)}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Expose clickAssign to inline handlers
+window.clickAssign = clickAssign;
+</script>
+</body>
+</html>
