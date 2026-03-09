@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HEROES — Attendance</title>
+<title>HEROES — Home</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -62,13 +62,16 @@
 
   main { padding: 28px 24px; flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
 
-  .placeholder {
-    text-align: center; padding: 80px 20px; color: var(--text-muted);
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 12px 20px;
+    font-size: 0.9rem; z-index: 999; opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
   }
-  .placeholder-icon { font-size: 2.5rem; margin-bottom: 12px; }
-  .placeholder h2 { color: var(--text); font-size: 1.3rem; margin-bottom: 8px; }
-  .placeholder p { font-size: 0.9rem; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-ok  { border-color: var(--success); color: var(--success); }
+  #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
 
   /* ── MODAL ── */
   .modal-backdrop {
@@ -88,6 +91,161 @@
     color: var(--text-muted); font-size: 1.3rem; cursor: pointer;
   }
   .modal-close:hover { color: var(--text); }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; }
+
+  .results-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .results-toolbar h3 { margin: 0; font-size: 0.95rem; white-space: nowrap; }
+  .results-search {
+    flex: 1; min-width: 180px; max-width: 320px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none;
+    transition: border-color .15s;
+  }
+  .results-search:focus { border-color: var(--accent); }
+  .results-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+
+  /* ── SUMMARY STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    border-top: 3px solid var(--border);
+  }
+  .stat-card.type-kvm { border-top-color: var(--accent); }
+  .stat-card.type-aa  { border-top-color: var(--success); }
+  .stat-card.type-gvg { border-top-color: #f0ad4e; }
+
+  .stat-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .stat-card-type {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 600;
+  }
+  .stat-card.type-kvm .stat-card-type { color: var(--accent); }
+  .stat-card.type-aa  .stat-card-type { color: var(--success); }
+  .stat-card.type-gvg .stat-card-type { color: #f0ad4e; }
+
+  .stat-card-date {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+  .stat-participation {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .stat-participation .stat-pct {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 6px;
+  }
+  .stat-highlight {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .stat-highlight strong {
+    color: var(--accent);
+  }
+  .stat-top-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .stat-top-list {
+    list-style: none; padding: 0; margin: 0;
+  }
+  .stat-top-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 0.8rem; border-bottom: 1px solid var(--border);
+  }
+  .stat-top-list li:last-child { border-bottom: none; }
+  .stat-top-list .top-rank {
+    color: var(--text-muted); font-size: 0.72rem; width: 18px; flex-shrink: 0;
+  }
+  .stat-top-list .top-name {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin: 0 6px;
+  }
+  .stat-top-list .top-score {
+    color: var(--accent); font-weight: 600; white-space: nowrap;
+  }
+
+  /* ── MONTH SELECTOR ── */
+  .event-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 20px;
+  }
+  .event-bar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .event-bar-header h3 { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .month-nav .month-label { font-size: 1rem; font-weight: 600; color: var(--text); }
+  .month-nav button {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); cursor: pointer; width: 32px; height: 32px; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s;
+  }
+  .month-nav button:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── TIER BADGES ── */
+  .tier-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    vertical-align: middle; margin-left: 6px;
+  }
+  .tier-badge.legend { background: #f0ad4e; color: #000; }
+  .tier-badge.elite  { background: #7c5bff; color: #fff; }
+  .tier-badge.rising { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* ── RANK CHANGE INDICATORS ── */
+  .rank-up { color: var(--success); font-weight: 600; }
+  .rank-down { color: var(--danger); font-weight: 600; }
+  .rank-same { color: var(--text-muted); }
+  .delta-positive { color: var(--success); font-size: 0.85rem; font-weight: 600; }
+  .delta-zero { color: var(--text-muted); font-size: 0.85rem; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .stats-bar { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    main { padding: 16px 12px; }
+    tbody td, thead th { padding: 10px 8px; font-size: 0.8rem; }
+  }
 </style>
 </head>
 <body>
@@ -102,7 +260,7 @@
     </div>
   </header>
   <nav id="main-nav">
-    <a href="index.html" class="active">Attendance</a>
+    <a href="index.html" class="active">Home</a>
     <a href="members.html">Members</a>
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
@@ -110,11 +268,81 @@
   </nav>
 
   <main>
-    <div class="placeholder">
-      <div class="placeholder-icon">📋</div>
-      <h2>Guild Attendance</h2>
-      <p>Track overall guild attendance across events.</p>
-      <p style="margin-top:16px;font-size:.82rem;color:var(--text-muted)">Coming soon</p>
+    <!-- SUMMARY STATS BAR -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-card type-kvm" id="stat-kvm">
+        <div class="stat-card-header">
+          <span class="stat-card-type">Last KVM</span>
+          <span class="stat-card-date" id="stat-kvm-date">&#8212;</span>
+        </div>
+        <div class="stat-participation" id="stat-kvm-rate">&#8212;</div>
+        <div class="stat-highlight" id="stat-kvm-highlight">
+          <div class="stat-top-label">Top 10</div>
+          <ul class="stat-top-list" id="stat-kvm-top"></ul>
+        </div>
+      </div>
+      <div class="stat-card type-aa" id="stat-aa">
+        <div class="stat-card-header">
+          <span class="stat-card-type">Last AA</span>
+          <span class="stat-card-date" id="stat-aa-date">&#8212;</span>
+        </div>
+        <div class="stat-participation" id="stat-aa-rate">&#8212;</div>
+        <div class="stat-highlight" id="stat-aa-highlight">
+          <div class="stat-top-label">Top 10</div>
+          <ul class="stat-top-list" id="stat-aa-top"></ul>
+        </div>
+      </div>
+      <div class="stat-card type-gvg" id="stat-gvg">
+        <div class="stat-card-header">
+          <span class="stat-card-type">Last GvG</span>
+          <span class="stat-card-date" id="stat-gvg-date">&#8212;</span>
+        </div>
+        <div class="stat-participation" id="stat-gvg-rate">&#8212;</div>
+        <div class="stat-highlight" id="stat-gvg-highlight">
+          <div class="stat-top-label">Top 10</div>
+          <ul class="stat-top-list" id="stat-gvg-top"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONTH SELECTOR -->
+    <div class="event-bar">
+      <div class="event-bar-header">
+        <h3>Monthly Hero Points</h3>
+      </div>
+      <div class="month-nav">
+        <button onclick="navigateMonth(-1)">&#9664;</button>
+        <span class="month-label" id="month-label"></span>
+        <button onclick="navigateMonth(1)">&#9654;</button>
+      </div>
+    </div>
+
+    <!-- MONTHLY HERO POINTS TABLE -->
+    <div id="results-section">
+      <div class="results-toolbar">
+        <h3><span id="results-count">0</span> members</h3>
+        <input class="results-search" type="text" placeholder="Search by name..." id="results-search-input" oninput="renderMonthlyTable()" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('rank')"># <span class="sort-icon" id="sort-rank">&#8597;</span></th>
+              <th onclick="sortBy('memberName')">Member <span class="sort-icon" id="sort-memberName">&#8597;</span></th>
+              <th onclick="sortBy('KVM')">KVM <span class="sort-icon" id="sort-KVM">&#8597;</span></th>
+              <th onclick="sortBy('xKVM')">xKVM <span class="sort-icon" id="sort-xKVM">&#8597;</span></th>
+              <th onclick="sortBy('AA')">AA <span class="sort-icon" id="sort-AA">&#8597;</span></th>
+              <th onclick="sortBy('GvG')">GvG <span class="sort-icon" id="sort-GvG">&#8597;</span></th>
+              <th onclick="sortBy('xGvG')">xGvG <span class="sort-icon" id="sort-xGvG">&#8597;</span></th>
+              <th onclick="sortBy('total')">Total <span class="sort-icon" id="sort-total">&#8597;</span></th>
+              <th onclick="sortBy('weekDelta')">+Week <span class="sort-icon" id="sort-weekDelta">&#8597;</span></th>
+              <th onclick="sortBy('rankChange')">Trend <span class="sort-icon" id="sort-rankChange">&#8597;</span></th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+        <div class="results-empty" id="results-empty">No hero points data for this month</div>
+      </div>
     </div>
   </main>
 </div>
@@ -122,7 +350,7 @@
 <!-- ── LOGIN MODAL ── -->
 <div class="modal-backdrop" id="login-modal">
   <div class="modal" style="width:380px">
-    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <button class="modal-close" onclick="closeModal('login-modal')">&#10005;</button>
     <h2>Admin Sign In</h2>
     <p class="subtitle">Sign in to manage guild data.</p>
     <div class="error-msg" id="auth-error"></div>
@@ -132,17 +360,24 @@
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+      <input type="password" id="login-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" />
     </div>
     <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp }                       from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged }         from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+<!-- ── TOAST ── -->
+<div id="toast"></div>
 
+<script type="module">
+import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot, getDoc,
+         getDocs, doc, query, orderBy, where,
+         Timestamp }                                 from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+// ── FIREBASE INIT ──
 const app  = initializeApp({
   apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
   authDomain:        "roxheroesdb.firebaseapp.com",
@@ -153,6 +388,46 @@ const app  = initializeApp({
   measurementId:     "G-FWNYLFLRSK"
 });
 const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── CONSTANTS ──
+const EVENT_TYPES = ['KVM', 'xKVM', 'AA', 'GvG', 'xGvG'];
+const SUMMARY_TYPES = ['KVM', 'AA', 'GvG'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ── STATE ──
+let members        = [];
+let events         = [];
+let config         = null;
+let isAdmin        = false;
+let unsubMembers   = null;
+let unsubEvents    = null;
+let unsubMonthlyHP = null;
+
+let calendarYear, calendarMonth;
+{
+  const now = new Date();
+  calendarYear = now.getFullYear();
+  calendarMonth = now.getMonth();
+}
+
+let monthlyHPData  = [];
+let sortCol        = 'total';
+let sortDir        = -1;
+
+// ── UTILS ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+window.showToast = function (msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `show toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+};
 
 window.openModal  = id => document.getElementById(id).classList.add('open');
 window.closeModal = id => document.getElementById(id).classList.remove('open');
@@ -161,13 +436,16 @@ document.querySelectorAll('.modal-backdrop').forEach(bd =>
   bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); })
 );
 
+// ── AUTH ──
 onAuthStateChanged(auth, user => {
   if (user) {
+    isAdmin = true;
     document.getElementById('user-email-display').textContent = user.email;
     document.getElementById('admin-login-btn').style.display = 'none';
     document.getElementById('logout-btn').style.display = '';
     closeModal('login-modal');
   } else {
+    isAdmin = false;
     document.getElementById('user-email-display').textContent = '';
     document.getElementById('admin-login-btn').style.display = '';
     document.getElementById('logout-btn').style.display = 'none';
@@ -202,6 +480,395 @@ window.doLogout = () => signOut(auth);
 document.getElementById('login-password').addEventListener('keydown', e => {
   if (e.key === 'Enter') window.doLogin();
 });
+
+// ── WEEK UTILITIES (from ranking.html) ──
+function getISOWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function getWeekBounds(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMon);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const weekNum = getISOWeekNumber(monday);
+  const weekLabel = `${monday.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+
+  return { weekLabel, weekStart: monday, weekEnd: sunday, weekNum };
+}
+
+function getMonthWeeks(year, month) {
+  const weeks = [];
+  const seen = new Set();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  const day = monthStart.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const cursor = new Date(year, month, 1 + diffToMon);
+
+  for (let i = 0; i < 6; i++) {
+    const wb = getWeekBounds(cursor);
+    if (seen.has(wb.weekLabel)) break;
+    if (wb.weekStart > monthEnd) break;
+    if (wb.weekEnd >= monthStart) {
+      seen.add(wb.weekLabel);
+      weeks.push(wb);
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return weeks;
+}
+
+// ── CONFIG ──
+async function loadConfig() {
+  try {
+    const snap = await getDoc(doc(db, 'rankingConfig', 'current'));
+    config = snap.exists() ? snap.data() : { rankTiers: { LEGEND: 440, ELITE: 340 } };
+  } catch (e) {
+    config = { rankTiers: { LEGEND: 440, ELITE: 340 } };
+  }
+}
+
+// ── FIRESTORE LISTENERS ──
+function startListeners() {
+  if (unsubMembers) return;
+
+  const mq = query(collection(db, 'members'), orderBy('name'));
+  unsubMembers = onSnapshot(mq, snap => {
+    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Refresh stats when members change (affects participation denominator)
+    loadSummaryStats();
+  }, err => showToast('Failed to load members: ' + err.message, 'err'));
+
+  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
+  unsubEvents = onSnapshot(eq, snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    loadSummaryStats();
+  }, err => showToast('Failed to load events: ' + err.message, 'err'));
+}
+
+// ── SUMMARY STATS ──
+let summaryLoading = false;
+async function loadSummaryStats() {
+  if (summaryLoading) return;
+  summaryLoading = true;
+
+  for (const type of SUMMARY_TYPES) {
+    const key = type.toLowerCase();
+    const dateEl = document.getElementById(`stat-${key}-date`);
+    const rateEl = document.getElementById(`stat-${key}-rate`);
+    const hlEl   = document.getElementById(`stat-${key}-highlight`);
+
+    const latestEvent = events.find(e => e.type === type);
+    if (!latestEvent) {
+      dateEl.textContent = '\u2014';
+      rateEl.textContent = '\u2014';
+      hlEl.style.display = 'none';
+      continue;
+    }
+
+    const evDate = latestEvent.date?.toDate ? latestEvent.date.toDate() : new Date(latestEvent.date);
+    dateEl.textContent = evDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    const mode = config?.qualificationMode?.[type] || 'absolute';
+    const threshold = config?.qualificationThresholds?.[type] || 0;
+
+    try {
+      const rSnap = await getDocs(query(
+        collection(db, 'eventResults'),
+        where('eventId', '==', latestEvent.id)
+      ));
+      const results = rSnap.docs.map(d => d.data());
+
+      // Determine participation based on qualification mode
+      let participated = 0;
+
+      if (mode === 'differential') {
+        // Find the previous event of the same type
+        const typeEvents = events.filter(e => e.type === type);
+        const prevEvent = typeEvents.length > 1 ? typeEvents[1] : null;
+
+        let prevResults = [];
+        if (prevEvent) {
+          const pSnap = await getDocs(query(
+            collection(db, 'eventResults'),
+            where('eventId', '==', prevEvent.id)
+          ));
+          prevResults = pSnap.docs.map(d => d.data());
+        }
+
+        // Build a lookup of previous scores by characterId
+        const prevScoreMap = {};
+        prevResults.forEach(r => { prevScoreMap[r.characterId] = r.points || 0; });
+
+        results.forEach(r => {
+          const pts = r.points || 0;
+          if (prevEvent && r.characterId in prevScoreMap) {
+            // Has previous score: qualified if diff >= threshold
+            if (pts - prevScoreMap[r.characterId] >= threshold) participated++;
+          } else {
+            // No previous score (new or first event): qualified if pts > 0
+            if (pts > 0) participated++;
+          }
+        });
+      } else {
+        // Absolute mode: qualified if score >= threshold
+        results.forEach(r => {
+          if ((r.points || 0) >= threshold) participated++;
+        });
+      }
+
+      const totalMembers = members.length;
+      const pct = totalMembers > 0 ? Math.round((participated / totalMembers) * 100) : 0;
+      rateEl.innerHTML = `${participated}/${totalMembers} <span class="stat-pct">(${pct}%)</span>`;
+
+      const topList = document.getElementById(`stat-${key}-top`);
+      if (results.length > 0) {
+        const sorted = [...results].sort((a, b) => (b.points || 0) - (a.points || 0));
+        const top10 = sorted.slice(0, 10);
+        topList.innerHTML = top10.map((r, i) =>
+          `<li><span class="top-rank">${i + 1}.</span><span class="top-name">${esc(r.memberName)}</span><span class="top-score">${(r.points || 0).toLocaleString()}</span></li>`
+        ).join('');
+        hlEl.style.display = '';
+      } else {
+        hlEl.style.display = 'none';
+        topList.innerHTML = '';
+      }
+    } catch (e) {
+      rateEl.textContent = '\u2014';
+      hlEl.style.display = 'none';
+    }
+  }
+
+  summaryLoading = false;
+}
+
+// ── MONTHLY HERO POINTS ──
+function subscribeMonthlyHeroPoints() {
+  if (unsubMonthlyHP) { unsubMonthlyHP(); unsubMonthlyHP = null; }
+
+  document.getElementById('month-label').textContent = `${MONTHS[calendarMonth]} ${calendarYear}`;
+
+  const monthStart = new Date(calendarYear, calendarMonth, 1);
+  const monthEnd = new Date(calendarYear, calendarMonth + 1, 0, 23, 59, 59, 999);
+
+  const wq = query(
+    collection(db, 'weeklyHeroPoints'),
+    where('weekStart', '>=', Timestamp.fromDate(monthStart)),
+    where('weekStart', '<=', Timestamp.fromDate(monthEnd))
+  );
+
+  unsubMonthlyHP = onSnapshot(wq, snap => {
+    monthlyHPData = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    renderMonthlyTable();
+  }, err => {
+    console.error('Monthly HP query failed:', err.message);
+    monthlyHPData = [];
+    renderMonthlyTable();
+  });
+}
+
+window.navigateMonth = function (delta) {
+  calendarMonth += delta;
+  if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  subscribeMonthlyHeroPoints();
+};
+
+// ── SORTING ──
+window.sortBy = function (col) {
+  if (sortCol === col) {
+    sortDir *= -1;
+  } else {
+    sortCol = col;
+    sortDir = col === 'memberName' ? 1 : -1;
+  }
+  // Update sort icons
+  document.querySelectorAll('#results-section thead th').forEach(th => th.classList.remove('sorted'));
+  const icon = document.getElementById(`sort-${col}`);
+  if (icon) {
+    icon.parentElement.classList.add('sorted');
+    icon.textContent = sortDir === 1 ? '\u2191' : '\u2193';
+  }
+  renderMonthlyTable();
+};
+
+// ── RENDER MONTHLY TABLE ──
+window.renderMonthlyTable = function () {
+  const body    = document.getElementById('results-body');
+  const empty   = document.getElementById('results-empty');
+  const countEl = document.getElementById('results-count');
+
+  if (monthlyHPData.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = '';
+    countEl.textContent = '0';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Step 1: Aggregate per member across all weeks in the month
+  const memberAgg = {};
+
+  monthlyHPData.forEach(row => {
+    const charId = row.characterId;
+    if (!memberAgg[charId]) {
+      memberAgg[charId] = {
+        characterId: charId,
+        memberName: row.memberName,
+        totals: { KVM: 0, xKVM: 0, AA: 0, GvG: 0, xGvG: 0 },
+        total: 0,
+        weeklyBreakdown: {}
+      };
+    }
+    const agg = memberAgg[charId];
+    agg.memberName = row.memberName;
+
+    EVENT_TYPES.forEach(t => {
+      const hp = row.breakdown?.[t]?.heroPoints || 0;
+      agg.totals[t] += hp;
+    });
+    agg.total += row.totalHeroPoints || 0;
+    agg.weeklyBreakdown[row.weekLabel] = (agg.weeklyBreakdown[row.weekLabel] || 0) + (row.totalHeroPoints || 0);
+  });
+
+  // Step 2: Identify latest and previous weeks
+  const allWeekLabels = [...new Set(monthlyHPData.map(r => r.weekLabel))].sort();
+  const latestWeek = allWeekLabels[allWeekLabels.length - 1];
+
+  // Step 3: Calculate week delta and rank change
+  const memberList = Object.values(memberAgg);
+
+  memberList.forEach(m => {
+    m.weekDelta = m.weeklyBreakdown[latestWeek] || 0;
+  });
+
+  // Current ranks based on total
+  const rankedCurrent = [...memberList].sort((a, b) => b.total - a.total);
+  rankedCurrent.forEach((m, i) => { m.currentRank = i + 1; });
+
+  // Previous ranks (total minus latest week's points)
+  if (allWeekLabels.length >= 2) {
+    const prevTotals = memberList.map(m => ({
+      characterId: m.characterId,
+      prevTotal: m.total - (m.weeklyBreakdown[latestWeek] || 0)
+    })).filter(p => p.prevTotal > 0);
+
+    prevTotals.sort((a, b) => b.prevTotal - a.prevTotal);
+    const prevRankMap = {};
+    prevTotals.forEach((p, i) => { prevRankMap[p.characterId] = i + 1; });
+
+    memberList.forEach(m => {
+      const prevRank = prevRankMap[m.characterId];
+      if (prevRank !== undefined) {
+        m.rankChange = prevRank - m.currentRank;
+      } else {
+        // New this week (no previous data), show as "new"
+        m.rankChange = null;
+      }
+    });
+  } else {
+    memberList.forEach(m => { m.rankChange = 0; });
+  }
+
+  // Step 4: Tier badges
+  memberList.forEach(m => {
+    if (config?.rankTiers) {
+      if (m.total >= (config.rankTiers.LEGEND || 440)) m.tier = 'legend';
+      else if (m.total >= (config.rankTiers.ELITE || 340)) m.tier = 'elite';
+      else m.tier = 'rising';
+    } else {
+      m.tier = 'rising';
+    }
+  });
+
+  // Step 5: Filter by search
+  const searchTerm = (document.getElementById('results-search-input').value || '').toLowerCase();
+  let filtered = searchTerm
+    ? memberList.filter(m => m.memberName.toLowerCase().includes(searchTerm))
+    : memberList;
+
+  // Step 6: Sort
+  filtered.sort((a, b) => {
+    let va, vb;
+    switch (sortCol) {
+      case 'rank':
+        va = a.currentRank; vb = b.currentRank; break;
+      case 'memberName':
+        va = a.memberName.toLowerCase(); vb = b.memberName.toLowerCase();
+        return va < vb ? -sortDir : va > vb ? sortDir : 0;
+      case 'total':
+        va = a.total; vb = b.total; break;
+      case 'weekDelta':
+        va = a.weekDelta; vb = b.weekDelta; break;
+      case 'rankChange':
+        va = a.rankChange ?? -999; vb = b.rankChange ?? -999; break;
+      default:
+        va = a.totals[sortCol] || 0; vb = b.totals[sortCol] || 0; break;
+    }
+    return (va - vb) * sortDir;
+  });
+
+  countEl.textContent = filtered.length;
+
+  // Step 7: Render rows
+  body.innerHTML = filtered.map(m => {
+    const tierBadge = m.tier === 'legend'
+      ? '<span class="tier-badge legend">Legend</span>'
+      : m.tier === 'elite'
+        ? '<span class="tier-badge elite">Elite</span>'
+        : '';
+
+    const eventCols = EVENT_TYPES.map(t => {
+      const val = m.totals[t];
+      return `<td style="text-align:center">${val > 0 ? val : '<span style="color:var(--text-muted)">\u2014</span>'}</td>`;
+    }).join('');
+
+    // Week delta column
+    const deltaHtml = m.weekDelta > 0
+      ? `<span class="delta-positive">+${m.weekDelta}</span>`
+      : `<span class="delta-zero">0</span>`;
+
+    // Rank change column
+    let trendHtml;
+    if (m.rankChange === null) {
+      trendHtml = `<span class="rank-up">NEW</span>`;
+    } else if (m.rankChange > 0) {
+      trendHtml = `<span class="rank-up">&#9650; ${m.rankChange}</span>`;
+    } else if (m.rankChange < 0) {
+      trendHtml = `<span class="rank-down">&#9660; ${Math.abs(m.rankChange)}</span>`;
+    } else {
+      trendHtml = `<span class="rank-same">\u2014</span>`;
+    }
+
+    return `<tr>
+      <td style="color:var(--text-muted)">${m.currentRank}</td>
+      <td>${esc(m.memberName)}${tierBadge}</td>
+      ${eventCols}
+      <td style="font-weight:600;color:var(--accent)">${m.total}</td>
+      <td>${deltaHtml}</td>
+      <td>${trendHtml}</td>
+    </tr>`;
+  }).join('');
+};
+
+// ── INIT ──
+loadConfig();
+startListeners();
+subscribeMonthlyHeroPoints();
+
 </script>
 </body>
 </html>
