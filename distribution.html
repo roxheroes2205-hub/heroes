@@ -22,12 +22,13 @@
 
   .form-group { margin-bottom: 16px; }
   .form-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
-  .form-group input {
+  .form-group input, .form-group select {
     width: 100%; background: var(--surface2); border: 1px solid var(--border);
     border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; outline: none;
     transition: border-color .15s;
   }
-  .form-group input:focus { border-color: var(--accent); }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
   .error-msg { color: var(--danger); font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
 
   .btn {
@@ -60,15 +61,18 @@
   #main-nav a:hover { color: var(--text); }
   #main-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  main { padding: 28px 24px; flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
+  main { padding: 28px 24px; flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; }
 
-  .placeholder {
-    text-align: center; padding: 80px 20px; color: var(--text-muted);
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 9px; padding: 12px 20px;
+    font-size: 0.9rem; z-index: 999; opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
   }
-  .placeholder-icon { font-size: 2.5rem; margin-bottom: 12px; }
-  .placeholder h2 { color: var(--text); font-size: 1.3rem; margin-bottom: 8px; }
-  .placeholder p { font-size: 0.9rem; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-ok  { border-color: var(--success); color: var(--success); }
+  #toast.toast-err { border-color: var(--danger);  color: var(--danger); }
 
   /* ── MODAL ── */
   .modal-backdrop {
@@ -88,6 +92,165 @@
     color: var(--text-muted); font-size: 1.3rem; cursor: pointer;
   }
   .modal-close:hover { color: var(--text); }
+
+  /* ── CALENDAR (Mon-Sun week rows, from ranking) ── */
+  .event-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 20px;
+  }
+  .event-bar h3 {
+    font-size: 0.78rem; margin-bottom: 14px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+
+  .calendar-nav {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .calendar-nav .month-label { font-size: 1rem; font-weight: 600; color: var(--text); }
+  .calendar-nav button {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); cursor: pointer; width: 32px; height: 32px; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s;
+  }
+  .calendar-nav button:hover { background: var(--surface2); color: var(--text); }
+
+  .calendar-weekdays {
+    display: grid; grid-template-columns: 42px repeat(7, 1fr); text-align: center;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); margin-bottom: 4px; padding: 0 2px;
+  }
+
+  .calendar-grid {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .calendar-week-row {
+    display: grid; grid-template-columns: 42px repeat(7, 1fr); gap: 3px;
+    border-radius: 6px; border: 2px solid transparent; padding: 1px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .calendar-week-row:hover { background: rgba(91,127,255,0.06); }
+  .calendar-week-row.selected { border-color: var(--accent); background: rgba(91,127,255,0.08); }
+
+  .week-label {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 600; color: var(--text-muted); gap: 2px;
+    border-radius: 6px; padding: 4px 2px; min-height: 60px;
+  }
+  .calendar-week-row.selected .week-label { color: var(--accent); }
+  .week-label .aa-count { color: var(--success); font-size: 0.65rem; }
+
+  .calendar-day {
+    min-height: 60px; border-radius: 6px; padding: 4px 5px;
+    font-size: 0.78rem; color: var(--text-muted); position: relative;
+    background: var(--surface2); border: 1px solid transparent; transition: border-color .15s;
+  }
+  .calendar-day.empty { background: transparent; border: none; }
+  .calendar-day.outside { background: var(--surface); opacity: 0.4; }
+  .calendar-day.today { border-color: var(--accent); }
+  .calendar-day .day-num { display: block; margin-bottom: 3px; font-weight: 500; }
+  .calendar-day.today .day-num { color: var(--accent); font-weight: 700; }
+
+  .calendar-day .event-pills { display: flex; flex-direction: column; gap: 2px; }
+  .event-pill {
+    display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem;
+    font-weight: 600; text-align: center; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .event-pill.type-KVM  { background: var(--accent); color: #fff; }
+  .event-pill.type-xKVM { background: #7c5bff; color: #fff; }
+  .event-pill.type-AA   { background: var(--success); color: #000; }
+  .event-pill.type-GvG  { background: #f0ad4e; color: #000; }
+  .event-pill.type-xGvG { background: var(--danger); color: #fff; }
+
+  /* ── RANK SELECTORS ── */
+  .rank-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 22px; margin-bottom: 20px;
+  }
+  .rank-section h3 {
+    font-size: 0.78rem; margin-bottom: 12px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .rank-hint {
+    font-size: 0.82rem; color: #f0ad4e; margin-bottom: 14px; padding: 10px 14px;
+    background: rgba(240, 173, 78, 0.08); border: 1px solid rgba(240, 173, 78, 0.2);
+    border-radius: 7px; line-height: 1.5;
+  }
+  .rank-controls {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;
+  }
+  .rank-controls .form-group { margin-bottom: 0; }
+
+  .no-aa-msg {
+    text-align: center; padding: 24px 16px; color: var(--text-muted); font-size: 0.88rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; text-align: center;
+  }
+  .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--text); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.success { color: var(--success); }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; }
+
+  .results-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .results-toolbar h3 { margin: 0; font-size: 0.95rem; white-space: nowrap; }
+  .results-search {
+    flex: 1; min-width: 180px; max-width: 320px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none;
+    transition: border-color .15s;
+  }
+  .results-search:focus { border-color: var(--accent); }
+
+  /* ── STATUS BADGES ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 10px;
+    font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+  }
+  .badge-eligible { background: rgba(62, 207, 142, 0.15); color: var(--success); }
+  .badge-one-box  { background: rgba(240, 173, 78, 0.15); color: #f0ad4e; }
+  .badge-no-boxes { background: rgba(224, 82, 82, 0.15); color: var(--danger); }
+  .badge-no-attempts { background: rgba(122, 127, 154, 0.15); color: var(--text-muted); }
+
+  .results-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+
+  @media (max-width: 768px) {
+    .rank-controls { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    table { font-size: 0.82rem; }
+    thead th, tbody td { padding: 8px 10px; }
+  }
+  @media (max-width: 600px) {
+    .calendar-day { min-height: 48px; padding: 3px; }
+    .event-pill { font-size: 0.6rem; padding: 1px 4px; }
+    .calendar-weekdays { grid-template-columns: 32px repeat(7, 1fr); }
+    .calendar-week-row { grid-template-columns: 32px repeat(7, 1fr); }
+    .week-label { font-size: 0.6rem; }
+  }
 </style>
 </head>
 <body>
@@ -110,11 +273,71 @@
   </nav>
 
   <main>
-    <div class="placeholder">
-      <div class="placeholder-icon">💎</div>
-      <h2>AA Distribution</h2>
-      <p>Manage and track AA distribution across guild members.</p>
-      <p style="margin-top:16px;font-size:.82rem;color:var(--text-muted)">Coming soon</p>
+    <!-- Calendar with week selection -->
+    <div class="event-bar">
+      <h3>AA Chest Distribution</h3>
+      <div class="calendar-nav">
+        <button onclick="navigateMonth(-1)">&#9664;</button>
+        <span class="month-label" id="calendar-month-label"></span>
+        <button onclick="navigateMonth(1)">&#9654;</button>
+      </div>
+      <div class="calendar-weekdays">
+        <span></span>
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+
+    <!-- Rank Selectors (shown when week with AA events is selected) -->
+    <div class="rank-section" id="rank-section" style="display:none">
+      <h3>Guild Ranking per AA Event</h3>
+      <div class="rank-hint">Select the guild rank achieved for each AA event. This determines the total number of chests available to distribute.</div>
+      <div class="rank-controls" id="rank-controls"></div>
+    </div>
+
+    <!-- No AA message -->
+    <div class="no-aa-msg" id="no-aa-msg" style="display:none">
+      No AA events found in the selected week.
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid" style="display:none">
+      <div class="stat-card">
+        <div class="stat-label">Total Members</div>
+        <div class="stat-value" id="stat-total-members">0</div>
+      </div>
+      <div class="stat-card" id="stat-card-ev0" style="display:none">
+        <div class="stat-label" id="stat-ev0-label">Participants</div>
+        <div class="stat-value accent" id="stat-ev0-participants">0</div>
+      </div>
+      <div class="stat-card" id="stat-card-ev1" style="display:none">
+        <div class="stat-label" id="stat-ev1-label">Participants</div>
+        <div class="stat-value accent" id="stat-ev1-participants">0</div>
+      </div>
+      <div class="stat-card" id="stat-card-boxes0" style="display:none">
+        <div class="stat-label" id="stat-boxes0-label">Boxes Used</div>
+        <div class="stat-value success" id="stat-ev0-boxes">0</div>
+      </div>
+      <div class="stat-card" id="stat-card-boxes1" style="display:none">
+        <div class="stat-label" id="stat-boxes1-label">Boxes Used</div>
+        <div class="stat-value success" id="stat-ev1-boxes">0</div>
+      </div>
+    </div>
+
+    <!-- Distribution Table -->
+    <div id="distribution-section" style="display:none">
+      <div class="results-toolbar">
+        <h3>Chest Distribution</h3>
+        <input type="text" class="results-search" id="search-input" placeholder="Search by member name..." />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead id="dist-thead"></thead>
+          <tbody id="dist-tbody">
+            <tr><td colspan="9" class="results-empty">Select a week above to calculate distribution</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </main>
 </div>
@@ -122,7 +345,7 @@
 <!-- ── LOGIN MODAL ── -->
 <div class="modal-backdrop" id="login-modal">
   <div class="modal" style="width:380px">
-    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <button class="modal-close" onclick="closeModal('login-modal')">&#10005;</button>
     <h2>Admin Sign In</h2>
     <p class="subtitle">Sign in to manage guild data.</p>
     <div class="error-msg" id="auth-error"></div>
@@ -132,17 +355,23 @@
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+      <input type="password" id="login-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" />
     </div>
     <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp }                       from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged }         from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+<!-- ── TOAST ── -->
+<div id="toast"></div>
 
+<script type="module">
+import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot,
+         getDocs, query, orderBy, where }           from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+// ── FIREBASE INIT ──
 const app  = initializeApp({
   apiKey:            "AIzaSyAPEfVXqMLClZiRr0ITzLs5tXcSytbAGJQ",
   authDomain:        "roxheroesdb.firebaseapp.com",
@@ -153,6 +382,45 @@ const app  = initializeApp({
   measurementId:     "G-FWNYLFLRSK"
 });
 const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── CONSTANTS ──
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ── STATE ──
+let members       = [];
+let events        = [];
+let unsubMembers  = null;
+let unsubEvents   = null;
+
+let calendarYear, calendarMonth;
+{
+  const now = new Date();
+  calendarYear = now.getFullYear();
+  calendarMonth = now.getMonth();
+}
+
+let selectedWeek   = null; // { weekLabel, weekStart, weekEnd }
+let weekAAEvents   = [];   // AA events in the selected week
+let eventResultsMap = {};  // eventId -> [ { memberName, points } ]
+let distributionData = [];
+let currentSort = { column: 'totalBoxes', ascending: false };
+
+// ── UTILS ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+window.showToast = function (msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+};
 
 window.openModal  = id => document.getElementById(id).classList.add('open');
 window.closeModal = id => document.getElementById(id).classList.remove('open');
@@ -161,12 +429,12 @@ document.querySelectorAll('.modal-backdrop').forEach(bd =>
   bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); })
 );
 
+// ── AUTH ──
 onAuthStateChanged(auth, user => {
   if (user) {
     document.getElementById('user-email-display').textContent = user.email;
     document.getElementById('admin-login-btn').style.display = 'none';
     document.getElementById('logout-btn').style.display = '';
-    closeModal('login-modal');
   } else {
     document.getElementById('user-email-display').textContent = '';
     document.getElementById('admin-login-btn').style.display = '';
@@ -184,6 +452,7 @@ window.doLogin = async function () {
   btn.disabled = true; btn.textContent = 'Signing in...';
   try {
     await signInWithEmailAndPassword(auth, email, pw);
+    closeModal('login-modal');
   } catch (e) {
     const map = {
       'auth/invalid-credential': 'Invalid email or password.',
@@ -193,8 +462,8 @@ window.doLogin = async function () {
       'auth/invalid-email':      'Invalid email address.',
     };
     err.textContent = map[e.code] || 'Sign in failed. Please try again.';
-    btn.disabled = false; btn.textContent = 'Sign In';
   }
+  btn.disabled = false; btn.textContent = 'Sign In';
 };
 
 window.doLogout = () => signOut(auth);
@@ -202,6 +471,497 @@ window.doLogout = () => signOut(auth);
 document.getElementById('login-password').addEventListener('keydown', e => {
   if (e.key === 'Enter') window.doLogin();
 });
+
+// ── WEEK UTILITIES (from ranking) ──
+function getISOWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function getWeekBounds(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMon);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const weekNum = getISOWeekNumber(monday);
+  const weekLabel = `${monday.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+
+  return { weekLabel, weekStart: monday, weekEnd: sunday, weekNum };
+}
+
+function getMonthWeeks(year, month) {
+  const weeks = [];
+  const seen = new Set();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  const day = monthStart.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const cursor = new Date(year, month, 1 + diffToMon);
+
+  for (let i = 0; i < 6; i++) {
+    const wb = getWeekBounds(cursor);
+    if (seen.has(wb.weekLabel)) break;
+    if (wb.weekStart > monthEnd) break;
+    if (wb.weekEnd >= monthStart) {
+      seen.add(wb.weekLabel);
+      weeks.push(wb);
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return weeks;
+}
+
+function getEventDate(ev) {
+  return ev.date?.toDate ? ev.date.toDate() : new Date(ev.date);
+}
+
+// ── FIRESTORE LISTENERS ──
+function startListeners() {
+  if (unsubMembers) return;
+
+  const mq = query(collection(db, 'members'), orderBy('name'));
+  unsubMembers = onSnapshot(mq, snap => {
+    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (weekAAEvents.length > 0) calculateDistribution();
+  }, err => showToast('Failed to load members: ' + err.message, 'err'));
+
+  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
+  unsubEvents = onSnapshot(eq, snap => {
+    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCalendar();
+    // If a week is already selected, refresh AA events in it
+    if (selectedWeek) onWeekSelected();
+  }, err => showToast('Failed to load events: ' + err.message, 'err'));
+}
+startListeners();
+
+// ── CALENDAR ──
+function renderCalendar() {
+  document.getElementById('calendar-month-label').textContent = `${MONTHS[calendarMonth]} ${calendarYear}`;
+
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+
+  const today = new Date();
+  const monthWeeks = getMonthWeeks(calendarYear, calendarMonth);
+
+  // Build dateKey -> events map
+  const dayEventsMap = {};
+  events.forEach(ev => {
+    const d = getEventDate(ev);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!dayEventsMap[key]) dayEventsMap[key] = [];
+    dayEventsMap[key].push(ev);
+  });
+
+  monthWeeks.forEach((week, idx) => {
+    const row = document.createElement('div');
+    row.className = 'calendar-week-row' + (selectedWeek && selectedWeek.weekLabel === week.weekLabel ? ' selected' : '');
+    row.addEventListener('click', () => selectWeek(week));
+
+    // Week label cell
+    const wLabel = document.createElement('div');
+    wLabel.className = 'week-label';
+    const wText = document.createElement('span');
+    wText.textContent = `W${idx + 1}`;
+    wLabel.appendChild(wText);
+
+    // Count AA events in this week
+    let aaCount = 0;
+    for (let i = 0; i < 7; i++) {
+      const cellDate = new Date(week.weekStart);
+      cellDate.setDate(week.weekStart.getDate() + i);
+      const key = `${cellDate.getFullYear()}-${cellDate.getMonth()}-${cellDate.getDate()}`;
+      const dayEv = dayEventsMap[key];
+      if (dayEv) aaCount += dayEv.filter(e => e.type === 'AA').length;
+    }
+    if (aaCount > 0) {
+      const aaTag = document.createElement('span');
+      aaTag.className = 'aa-count';
+      aaTag.textContent = `${aaCount} AA`;
+      wLabel.appendChild(aaTag);
+    }
+    row.appendChild(wLabel);
+
+    // Day cells (Mon through Sun)
+    for (let i = 0; i < 7; i++) {
+      const cellDate = new Date(week.weekStart);
+      cellDate.setDate(week.weekStart.getDate() + i);
+
+      const cell = document.createElement('div');
+      const inMonth = cellDate.getMonth() === calendarMonth;
+      const isToday = cellDate.toDateString() === today.toDateString();
+      const key = `${cellDate.getFullYear()}-${cellDate.getMonth()}-${cellDate.getDate()}`;
+      const dayEv = dayEventsMap[key];
+
+      cell.className = 'calendar-day' + (!inMonth ? ' outside' : '') + (isToday ? ' today' : '');
+
+      const num = document.createElement('span');
+      num.className = 'day-num';
+      num.textContent = cellDate.getDate();
+      cell.appendChild(num);
+
+      if (dayEv) {
+        const pillsWrap = document.createElement('div');
+        pillsWrap.className = 'event-pills';
+        dayEv.forEach(ev => {
+          const pill = document.createElement('span');
+          pill.className = 'event-pill type-' + ev.type;
+          pill.textContent = ev.type;
+          pillsWrap.appendChild(pill);
+        });
+        cell.appendChild(pillsWrap);
+      }
+
+      row.appendChild(cell);
+    }
+
+    grid.appendChild(row);
+  });
+}
+
+window.navigateMonth = function (delta) {
+  calendarMonth += delta;
+  if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  selectedWeek = null;
+  weekAAEvents = [];
+  eventResultsMap = {};
+  distributionData = [];
+  hideDistribution();
+  renderCalendar();
+};
+
+function selectWeek(week) {
+  selectedWeek = week;
+  renderCalendar();
+  onWeekSelected();
+}
+
+// ── WEEK SELECTION HANDLER ──
+async function onWeekSelected() {
+  // Find AA events in the selected week
+  weekAAEvents = events.filter(ev => {
+    if (ev.type !== 'AA') return false;
+    const d = getEventDate(ev);
+    return d >= selectedWeek.weekStart && d <= selectedWeek.weekEnd;
+  }).sort((a, b) => getEventDate(a) - getEventDate(b));
+
+  if (weekAAEvents.length === 0) {
+    document.getElementById('rank-section').style.display = 'none';
+    document.getElementById('no-aa-msg').style.display = '';
+    document.getElementById('stats-grid').style.display = 'none';
+    document.getElementById('distribution-section').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('no-aa-msg').style.display = 'none';
+  renderRankSection();
+
+  // Load event results for each AA event
+  eventResultsMap = {};
+  const promises = weekAAEvents.map(ev => loadEventResults(ev.id));
+  await Promise.all(promises);
+
+  calculateDistribution();
+}
+
+async function loadEventResults(eventId) {
+  try {
+    const rq = query(collection(db, 'eventResults'), where('eventId', '==', eventId));
+    const snap = await getDocs(rq);
+    eventResultsMap[eventId] = snap.docs.map(d => d.data());
+  } catch (err) {
+    showToast('Failed to load event results: ' + err.message, 'err');
+  }
+}
+
+function hideDistribution() {
+  document.getElementById('rank-section').style.display = 'none';
+  document.getElementById('no-aa-msg').style.display = 'none';
+  document.getElementById('stats-grid').style.display = 'none';
+  document.getElementById('distribution-section').style.display = 'none';
+}
+
+// ── RANK SECTION ──
+function renderRankSection() {
+  const section = document.getElementById('rank-section');
+  const controls = document.getElementById('rank-controls');
+
+  section.style.display = '';
+  controls.innerHTML = '';
+
+  weekAAEvents.forEach((ev, i) => {
+    const d = getEventDate(ev);
+    const dayName = DAY_NAMES[d.getDay()];
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const group = document.createElement('div');
+    group.className = 'form-group';
+    group.innerHTML = `
+      <label>${esc(dayName)} (${esc(dateStr)}) Ranking</label>
+      <select id="rank-select-${i}" onchange="onRankChange()">
+        <option value="240">Rank 1 (240 boxes)</option>
+        <option value="150">Rank 2 (150 boxes)</option>
+        <option value="120">Rank 3 (120 boxes)</option>
+        <option value="80">Rank 4-5 (80 boxes)</option>
+      </select>`;
+    controls.appendChild(group);
+  });
+}
+
+window.onRankChange = function () {
+  calculateDistribution();
+};
+
+// ── DISTRIBUTION ALGORITHM ──
+function calculateDistribution() {
+  if (weekAAEvents.length === 0 || members.length === 0) {
+    document.getElementById('stats-grid').style.display = 'none';
+    document.getElementById('distribution-section').style.display = 'none';
+    return;
+  }
+
+  // Build results maps per AA event
+  const resultsMaps = weekAAEvents.map(ev => {
+    const results = eventResultsMap[ev.id] || [];
+    const map = new Map();
+    results.forEach(r => {
+      const name = r.memberName || r.nameFromImage || '';
+      map.set(name, parseInt(r.points) || 0);
+    });
+    return map;
+  });
+
+  // Get box counts from rank selectors
+  const boxCounts = weekAAEvents.map((_, i) => {
+    const sel = document.getElementById(`rank-select-${i}`);
+    return sel ? parseInt(sel.value) : 240;
+  });
+
+  // Build distribution data from members
+  distributionData = members.map(member => {
+    const name = member.name;
+    const attempts = parseInt(member.attempts) || 0;
+    const row = { name, attempts };
+
+    weekAAEvents.forEach((_, i) => {
+      row[`ev${i}Points`] = resultsMaps[i].get(name) || 0;
+      row[`ev${i}Boxes`] = 0;
+      row[`ev${i}Status`] = '';
+    });
+    row.totalBoxes = 0;
+    return row;
+  });
+
+  // Distribute boxes for each event
+  weekAAEvents.forEach((_, i) => {
+    distributeBoxes(distributionData, i, boxCounts[i]);
+  });
+
+  // Sum total boxes
+  distributionData.forEach(member => {
+    member.totalBoxes = 0;
+    weekAAEvents.forEach((_, i) => {
+      member.totalBoxes += member[`ev${i}Boxes`];
+    });
+  });
+
+  updateTable();
+  updateStats();
+}
+
+function distributeBoxes(data, eventIndex, totalBoxes) {
+  const pointsKey = `ev${eventIndex}Points`;
+  const boxesKey = `ev${eventIndex}Boxes`;
+  const statusKey = `ev${eventIndex}Status`;
+
+  const oneBox = [];
+  const eligible = [];
+
+  data.forEach(member => {
+    const points = member[pointsKey];
+    const attempts = member.attempts;
+
+    if (attempts === 0) {
+      member[statusKey] = 'No Attempts';
+      member[boxesKey] = 0;
+    } else if (points < 200) {
+      member[statusKey] = 'No Boxes';
+      member[boxesKey] = 0;
+    } else if (points === 200) {
+      member[statusKey] = 'One Box';
+      member[boxesKey] = 1;
+      oneBox.push(member);
+    } else {
+      member[statusKey] = 'Eligible';
+      eligible.push(member);
+    }
+  });
+
+  const remainingBoxes = totalBoxes - oneBox.length;
+  const eligibleCount = eligible.length;
+
+  if (eligibleCount > 0 && remainingBoxes > 0) {
+    const boxesPerMember = Math.floor(remainingBoxes / eligibleCount);
+    eligible.forEach(member => {
+      member[boxesKey] = Math.min(boxesPerMember, member.attempts);
+      if (member[boxesKey] < boxesPerMember) {
+        member[statusKey] = 'Limited by Attempts';
+      }
+    });
+  }
+}
+
+// ── TABLE RENDERING ──
+function updateTable() {
+  document.getElementById('stats-grid').style.display = '';
+  document.getElementById('distribution-section').style.display = '';
+
+  // Build dynamic header
+  const thead = document.getElementById('dist-thead');
+  let headerHtml = `<tr>
+    <th onclick="sortBy('name')">Member <span class="sort-icon" id="sort-name">&#8597;</span></th>
+    <th onclick="sortBy('attempts')">Attempts <span class="sort-icon" id="sort-attempts">&#8597;</span></th>`;
+
+  weekAAEvents.forEach((ev, i) => {
+    const d = getEventDate(ev);
+    const shortDay = DAY_SHORT[d.getDay()];
+    headerHtml += `
+    <th onclick="sortBy('ev${i}Points')">${esc(shortDay)} Pts <span class="sort-icon" id="sort-ev${i}Points">&#8597;</span></th>
+    <th onclick="sortBy('ev${i}Boxes')">${esc(shortDay)} Boxes <span class="sort-icon" id="sort-ev${i}Boxes">&#8597;</span></th>
+    <th onclick="sortBy('ev${i}Status')">${esc(shortDay)} Status <span class="sort-icon" id="sort-ev${i}Status">&#8597;</span></th>`;
+  });
+
+  headerHtml += `<th onclick="sortBy('totalBoxes')">Total <span class="sort-icon" id="sort-totalBoxes">&#8597;</span></th></tr>`;
+  thead.innerHTML = headerHtml;
+
+  renderTableBody();
+}
+
+function renderTableBody() {
+  const tbody = document.getElementById('dist-tbody');
+  const searchTerm = document.getElementById('search-input').value.toLowerCase();
+
+  let filtered = distributionData.filter(m => m.name.toLowerCase().includes(searchTerm));
+
+  // Sort
+  filtered.sort((a, b) => {
+    let aVal = a[currentSort.column];
+    let bVal = b[currentSort.column];
+
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return currentSort.ascending ? aVal - bVal : bVal - aVal;
+    }
+    aVal = String(aVal).toLowerCase();
+    bVal = String(bVal).toLowerCase();
+    return currentSort.ascending
+      ? (aVal < bVal ? -1 : aVal > bVal ? 1 : 0)
+      : (aVal > bVal ? -1 : aVal < bVal ? 1 : 0);
+  });
+
+  if (filtered.length === 0) {
+    const colCount = 3 + weekAAEvents.length * 3;
+    tbody.innerHTML = `<tr><td colspan="${colCount}" class="results-empty">No members found</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(m => {
+    let row = `<tr>
+      <td>${esc(m.name)}</td>
+      <td>${m.attempts.toLocaleString()}</td>`;
+
+    weekAAEvents.forEach((_, i) => {
+      row += `
+      <td>${m[`ev${i}Points`]}</td>
+      <td>${m[`ev${i}Boxes`]}</td>
+      <td><span class="badge ${getBadgeClass(m[`ev${i}Status`])}">${esc(m[`ev${i}Status`])}</span></td>`;
+    });
+
+    row += `<td style="font-weight:700">${m.totalBoxes}</td></tr>`;
+    return row;
+  }).join('');
+
+  updateSortIndicators();
+}
+
+function getBadgeClass(status) {
+  switch (status) {
+    case 'Eligible':
+    case 'Limited by Attempts':
+      return 'badge-eligible';
+    case 'One Box':
+      return 'badge-one-box';
+    case 'No Boxes':
+      return 'badge-no-boxes';
+    case 'No Attempts':
+      return 'badge-no-attempts';
+    default:
+      return '';
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-total-members').textContent = members.length;
+
+  for (let i = 0; i < 2; i++) {
+    const hasEvent = i < weekAAEvents.length;
+    document.getElementById(`stat-card-ev${i}`).style.display = hasEvent ? '' : 'none';
+    document.getElementById(`stat-card-boxes${i}`).style.display = hasEvent ? '' : 'none';
+
+    if (hasEvent) {
+      const d = getEventDate(weekAAEvents[i]);
+      const dayName = DAY_NAMES[d.getDay()];
+      const results = eventResultsMap[weekAAEvents[i].id] || [];
+      document.getElementById(`stat-ev${i}-label`).textContent = `${dayName} Participants`;
+      document.getElementById(`stat-ev${i}-participants`).textContent = results.length;
+      document.getElementById(`stat-boxes${i}-label`).textContent = `${dayName} Boxes Used`;
+      const totalBoxes = distributionData.reduce((sum, m) => sum + (m[`ev${i}Boxes`] || 0), 0);
+      document.getElementById(`stat-ev${i}-boxes`).textContent = totalBoxes;
+    }
+  }
+}
+
+// ── SORTING ──
+window.sortBy = function (column) {
+  if (currentSort.column === column) {
+    currentSort.ascending = !currentSort.ascending;
+  } else {
+    currentSort.column = column;
+    currentSort.ascending = false;
+  }
+  renderTableBody();
+};
+
+function updateSortIndicators() {
+  document.querySelectorAll('#dist-thead th').forEach(th => {
+    th.classList.remove('sorted');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.innerHTML = '&#8597;';
+  });
+
+  const activeIcon = document.getElementById(`sort-${currentSort.column}`);
+  if (activeIcon) {
+    activeIcon.innerHTML = currentSort.ascending ? '&#8593;' : '&#8595;';
+    activeIcon.closest('th').classList.add('sorted');
+  }
+}
+
+// ── SEARCH ──
+document.getElementById('search-input').addEventListener('input', () => {
+  if (distributionData.length > 0) renderTableBody();
+});
+
 </script>
 </body>
 </html>
