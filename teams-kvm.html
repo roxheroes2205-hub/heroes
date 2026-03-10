@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HEROES — GvG Teams</title>
+<title>HEROES — KvM Teams</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -297,14 +297,14 @@
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
     <a href="ranking.html">Ranking</a>
-    <a href="teams-gvg.html" class="active">GvG Teams</a>
+    <a href="teams-gvg.html">GvG Teams</a>
     <a href="teams-aa.html">AA Teams</a>
-    <a href="teams-kvm.html">KvM Teams</a>
+    <a href="teams-kvm.html" class="active">KvM Teams</a>
   </nav>
 
   <main>
     <div class="toolbar">
-      <h1>GvG Teams</h1>
+      <h1>KvM Teams</h1>
       <div style="flex:1"></div>
       <div class="admin-only" style="display:none">
         <button class="btn btn-ghost" id="copy-image-btn" onclick="copyTeamsAsImage()">Copy as Image</button>
@@ -388,7 +388,8 @@ const app  = initializeApp({
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-const MAX_TEAM_SIZE = 15;
+const MAX_TEAM_SIZE = 5;
+const NUM_PARTIES = 1;
 
 // ── STATE ──
 let members      = [];
@@ -397,7 +398,7 @@ let deleteTeamIdx = null;
 let teamsLoaded  = false;
 
 // Team builder state
-// Each team: { name, parties: [[], [], []], leadId }
+// Each team: { name, parties: [[]], leadId }
 let teams      = [];
 let benchIds   = [];
 let savedTeams = null;
@@ -487,25 +488,18 @@ document.getElementById('login-password').addEventListener('keydown', e => {
 // ── FIRESTORE LISTENERS ──
 function parseTeamData(t) {
   const validId = id => members.some(m => m.id === id);
-  // Support new parties format (stored as map {"0": [...], "1": [...], "2": [...]})
   if (t.parties) {
     const raw = Array.isArray(t.parties)
       ? t.parties
-      : [t.parties['0'] || [], t.parties['1'] || [], t.parties['2'] || []];
+      : [t.parties['0'] || []];
     return {
       name: t.name,
-      parties: raw.map(p => (p || []).filter(validId)),
+      parties: raw.slice(0, NUM_PARTIES).map(p => (p || []).filter(validId)),
       leadId: t.leadId || null,
     };
   }
-  // Legacy: flat memberIds → distribute into parties of 5
   const ids = (t.memberIds || []).filter(validId);
-  const parties = [[], [], []];
-  ids.forEach((id, i) => {
-    const pi = Math.min(Math.floor(i / 5), 2);
-    parties[pi].push(id);
-  });
-  return { name: t.name, parties, leadId: t.leadId || null };
+  return { name: t.name, parties: [ids.slice(0, 5)], leadId: t.leadId || null };
 }
 
 function startListeners() {
@@ -521,8 +515,8 @@ function startListeners() {
     renderAll();
   });
 
-  // Load the single GvG composition
-  onSnapshot(doc(db, 'teamCompositions', 'gvg'), snap => {
+  // Load the single KvM composition
+  onSnapshot(doc(db, 'teamCompositions', 'kvm'), snap => {
     if (snap.exists() && !teamsLoaded) {
       const data = snap.data();
       if (members.length > 0) {
@@ -535,7 +529,7 @@ function startListeners() {
       }
     }
   }, err => {
-    console.error('GvG teams load error:', err);
+    console.error('KvM teams load error:', err);
   });
 }
 startListeners();
@@ -550,7 +544,7 @@ function rebuildBench() {
 window.addTeam = function () {
   if (!isAdmin) return;
   const num = teams.length + 1;
-  teams.push({ name: `Team ${num}`, parties: [[], [], []], leadId: null });
+  teams.push({ name: `Team ${num}`, parties: [[]], leadId: null });
   renderAll();
 };
 
@@ -637,7 +631,7 @@ function onDropParty(e, teamIdx, partyIdx, insertIdx) {
   const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
 
   if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
-    showToast('Team is full (15/15)', 'err');
+    showToast('Team is full (5/5)', 'err');
     dragMemberId = null;
     dragSource = null;
     return;
@@ -669,7 +663,7 @@ function onDropTeam(e, teamIdx) {
   const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
 
   if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
-    showToast('Team is full (15/15)', 'err');
+    showToast('Team is full (5/5)', 'err');
     dragMemberId = null;
     dragSource = null;
     return;
@@ -927,7 +921,7 @@ function renderTeams() {
         const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
 
         if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
-          showToast('Team is full (15/15)', 'err');
+          showToast('Team is full (5/5)', 'err');
           dragMemberId = null;
           dragSource = null;
           return;
@@ -979,8 +973,8 @@ benchPanel.addEventListener('drop', e => { if (!isAdmin) return; benchPanel.clas
 window.saveTeams = async function () {
   if (!isAdmin) return;
   try {
-    await setDoc(doc(db, 'teamCompositions', 'gvg'), {
-      eventType: 'GvG',
+    await setDoc(doc(db, 'teamCompositions', 'kvm'), {
+      eventType: 'KvM',
       teams: teams.map(t => ({
         name: t.name,
         parties: Object.fromEntries(t.parties.map((p, i) => [String(i), [...p]])),
@@ -1018,7 +1012,7 @@ window.copyTeamsAsImage = async function () {
     // Compute card heights
     function cardHeight(team) {
       let h = cardPadTop;
-      for (let pi = 0; pi < 3; pi++) {
+      for (let pi = 0; pi < NUM_PARTIES; pi++) {
         const party = team.parties[pi];
         const count = party.length;
         const empty = Math.max(0, 5 - count);
@@ -1055,7 +1049,7 @@ window.copyTeamsAsImage = async function () {
     // Title
     ctx.fillStyle = '#e8eaf0';
     ctx.font = 'bold 18px "Segoe UI", system-ui, sans-serif';
-    ctx.fillText('GvG Teams', pad, pad + 24);
+    ctx.fillText('KvM Teams', pad, pad + 24);
 
     // Draw each team card
     let curY = pad + titleH;
@@ -1091,7 +1085,7 @@ window.copyTeamsAsImage = async function () {
         ctx.beginPath(); ctx.moveTo(x, y + cardPadTop); ctx.lineTo(x + cardW, y + cardPadTop); ctx.stroke();
 
         let py = y + cardPadTop;
-        for (let pi = 0; pi < 3; pi++) {
+        for (let pi = 0; pi < NUM_PARTIES; pi++) {
           const party = team.parties[pi];
           const partyMembers = party.map(id => members.find(m => m.id === id)).filter(Boolean);
 

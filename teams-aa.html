@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HEROES — GvG Teams</title>
+<title>HEROES — AA Teams</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -297,14 +297,14 @@
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
     <a href="ranking.html">Ranking</a>
-    <a href="teams-gvg.html" class="active">GvG Teams</a>
-    <a href="teams-aa.html">AA Teams</a>
+    <a href="teams-gvg.html">GvG Teams</a>
+    <a href="teams-aa.html" class="active">AA Teams</a>
     <a href="teams-kvm.html">KvM Teams</a>
   </nav>
 
   <main>
     <div class="toolbar">
-      <h1>GvG Teams</h1>
+      <h1>AA Teams</h1>
       <div style="flex:1"></div>
       <div class="admin-only" style="display:none">
         <button class="btn btn-ghost" id="copy-image-btn" onclick="copyTeamsAsImage()">Copy as Image</button>
@@ -521,8 +521,8 @@ function startListeners() {
     renderAll();
   });
 
-  // Load the single GvG composition
-  onSnapshot(doc(db, 'teamCompositions', 'gvg'), snap => {
+  // Load the single AA composition
+  onSnapshot(doc(db, 'teamCompositions', 'aa'), snap => {
     if (snap.exists() && !teamsLoaded) {
       const data = snap.data();
       if (members.length > 0) {
@@ -535,7 +535,7 @@ function startListeners() {
       }
     }
   }, err => {
-    console.error('GvG teams load error:', err);
+    console.error('AA teams load error:', err);
   });
 }
 startListeners();
@@ -979,8 +979,8 @@ benchPanel.addEventListener('drop', e => { if (!isAdmin) return; benchPanel.clas
 window.saveTeams = async function () {
   if (!isAdmin) return;
   try {
-    await setDoc(doc(db, 'teamCompositions', 'gvg'), {
-      eventType: 'GvG',
+    await setDoc(doc(db, 'teamCompositions', 'aa'), {
+      eventType: 'AA',
       teams: teams.map(t => ({
         name: t.name,
         parties: Object.fromEntries(t.parties.map((p, i) => [String(i), [...p]])),
@@ -1055,7 +1055,7 @@ window.copyTeamsAsImage = async function () {
     // Title
     ctx.fillStyle = '#e8eaf0';
     ctx.font = 'bold 18px "Segoe UI", system-ui, sans-serif';
-    ctx.fillText('GvG Teams', pad, pad + 24);
+    ctx.fillText('AA Teams', pad, pad + 24);
 
     // Draw each team card
     let curY = pad + titleH;
