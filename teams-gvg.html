@@ -267,6 +267,11 @@
   .party-overfull { border-color: #e0a030 !important; }
   .party-overfull .party-group-header { color: #e0a030; background: rgba(224,160,48,0.1); }
 
+  /* ── VIEW-ONLY (non-admin) ── */
+  .member-chip.view-only { cursor: default; }
+  .team-member.view-only { cursor: default; }
+  .team-title[readonly] { cursor: default; pointer-events: none; }
+
 </style>
 </head>
 <body>
@@ -443,6 +448,8 @@ onAuthStateChanged(auth, user => {
     document.getElementById('logout-btn').style.display = 'none';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
   }
+  // Re-render to apply admin/view-only state to all interactive elements
+  if (teamsLoaded) renderAll();
 });
 
 window.doLogin = async function () {
@@ -747,19 +754,21 @@ function renderBench() {
   }
 
   list.innerHTML = filtered.map(m => {
-    return `<div class="member-chip" draggable="true" data-id="${esc(m.id)}"
-                 ondblclick="clickAssign('${esc(m.id)}')">
+    return `<div class="member-chip${isAdmin ? '' : ' view-only'}" ${isAdmin ? 'draggable="true"' : ''} data-id="${esc(m.id)}"
+                 ${isAdmin ? `ondblclick="clickAssign('${esc(m.id)}')"` : ''}>
       <span class="chip-name">${esc(m.name)}</span>
       <span class="chip-class">${esc(m.class || '')}</span>
     </div>`;
   }).join('');
 
-  // Attach drag listeners
-  list.querySelectorAll('.member-chip').forEach(chip => {
-    const id = chip.dataset.id;
-    chip.addEventListener('dragstart', e => onDragStart(e, id, 'bench'));
-    chip.addEventListener('dragend', onDragEnd);
-  });
+  // Attach drag listeners (admin only)
+  if (isAdmin) {
+    list.querySelectorAll('.member-chip').forEach(chip => {
+      const id = chip.dataset.id;
+      chip.addEventListener('dragstart', e => onDragStart(e, id, 'bench'));
+      chip.addEventListener('dragend', onDragEnd);
+    });
+  }
 }
 
 function renderTeams() {
@@ -801,16 +810,18 @@ function renderTeams() {
       const memberRows = partyMembers.map(m => {
         const isLead = m.id === team.leadId;
         const crownHtml = isLead
-          ? `<span class="tm-crown" onclick="setLead(${idx},'${esc(m.id)}')" title="Remove PT Lead">&#x1F451;</span>`
+          ? (isAdmin
+            ? `<span class="tm-crown" onclick="setLead(${idx},'${esc(m.id)}')" title="Remove PT Lead">&#x1F451;</span>`
+            : `<span class="tm-crown" style="cursor:default">&#x1F451;</span>`)
           : (isAdmin
             ? `<span class="tm-crown-empty admin-only" onclick="setLead(${idx},'${esc(m.id)}')" title="Set as PT Lead">&#x1F451;</span>`
             : '');
-        return `<div class="team-member${isLead ? ' is-lead' : ''}" draggable="true" data-id="${esc(m.id)}" data-team="${idx}" data-party="${pi}">
-            <span class="tm-grip">&#8942;</span>
+        return `<div class="team-member${isLead ? ' is-lead' : ''}${isAdmin ? '' : ' view-only'}" ${isAdmin ? 'draggable="true"' : ''} data-id="${esc(m.id)}" data-team="${idx}" data-party="${pi}">
+            ${isAdmin ? '<span class="tm-grip">&#8942;</span>' : ''}
             ${crownHtml}
             <span class="tm-name">${esc(m.name)}</span>
             <span class="tm-class">${esc(m.class || '')}</span>
-            <button class="tm-remove" onclick="removeFromTeam(${idx},${pi},'${esc(m.id)}')" title="Remove">&#10005;</button>
+            ${isAdmin ? `<button class="tm-remove" onclick="removeFromTeam(${idx},${pi},'${esc(m.id)}')" title="Remove">&#10005;</button>` : ''}
           </div>`;
       }).join('');
 
@@ -832,7 +843,7 @@ function renderTeams() {
       <div class="team-header">
         <div class="team-header-left">
           <input class="team-title" value="${esc(team.name)}" data-team-idx="${idx}"
-                 onchange="renameTeam(${idx}, this.value)" />
+                 ${isAdmin ? `onchange="renameTeam(${idx}, this.value)"` : 'readonly'} />
           <span class="team-count${isFull ? ' full' : ''}">${teamSize} / ${MAX_TEAM_SIZE}${isFull ? ' Full' : ''}</span>
         </div>
         <div class="team-header-right admin-only" ${isAdmin ? '' : 'style="display:none"'}>
@@ -843,84 +854,87 @@ function renderTeams() {
     </div>`;
   }).join('');
 
-  // Team card fallback drop targets
-  area.querySelectorAll('.team-card').forEach(card => {
-    const idx = parseInt(card.dataset.teamIdx);
-    card.addEventListener('dragover', onDragOverTeam);
-    card.addEventListener('dragenter', e => onDragEnterTeam(e, card));
-    card.addEventListener('dragleave', e => onDragLeaveTeam(e, card));
-    card.addEventListener('drop', e => onDropTeam(e, idx));
-  });
-
-  // Party group drop targets
-  area.querySelectorAll('.party-group').forEach(pg => {
-    const teamIdx = parseInt(pg.dataset.teamIdx);
-    const partyIdx = parseInt(pg.dataset.partyIdx);
-    pg.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; });
-    pg.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); pg.classList.add('drag-over'); });
-    pg.addEventListener('dragleave', e => { if (!pg.contains(e.relatedTarget)) pg.classList.remove('drag-over'); });
-    pg.addEventListener('drop', e => {
-      pg.classList.remove('drag-over');
-      onDropParty(e, teamIdx, partyIdx);
-    });
-  });
-
-  // Member drag + positional drop within party
-  area.querySelectorAll('.team-member[draggable]').forEach(el => {
-    const id = el.dataset.id;
-    const teamIdx = parseInt(el.dataset.team);
-    const partyIdx = parseInt(el.dataset.party);
-    el.addEventListener('dragstart', e => { e.stopPropagation(); onDragStart(e, id, { team: teamIdx, party: partyIdx }); });
-    el.addEventListener('dragend', onDragEnd);
-
-    el.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
-      const rect = el.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      el.classList.toggle('drop-above', e.clientY < midY);
-      el.classList.toggle('drop-below', e.clientY >= midY);
+  // Drag/drop listeners (admin only)
+  if (isAdmin) {
+    // Team card fallback drop targets
+    area.querySelectorAll('.team-card').forEach(card => {
+      const idx = parseInt(card.dataset.teamIdx);
+      card.addEventListener('dragover', onDragOverTeam);
+      card.addEventListener('dragenter', e => onDragEnterTeam(e, card));
+      card.addEventListener('dragleave', e => onDragLeaveTeam(e, card));
+      card.addEventListener('drop', e => onDropTeam(e, idx));
     });
 
-    el.addEventListener('dragleave', () => {
-      el.classList.remove('drop-above', 'drop-below');
+    // Party group drop targets
+    area.querySelectorAll('.party-group').forEach(pg => {
+      const teamIdx = parseInt(pg.dataset.teamIdx);
+      const partyIdx = parseInt(pg.dataset.partyIdx);
+      pg.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; });
+      pg.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); pg.classList.add('drag-over'); });
+      pg.addEventListener('dragleave', e => { if (!pg.contains(e.relatedTarget)) pg.classList.remove('drag-over'); });
+      pg.addEventListener('drop', e => {
+        pg.classList.remove('drag-over');
+        onDropParty(e, teamIdx, partyIdx);
+      });
     });
 
-    el.addEventListener('drop', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      el.classList.remove('drop-above', 'drop-below');
-      if (!dragMemberId || dragMemberId === id) return;
+    // Member drag + positional drop within party
+    area.querySelectorAll('.team-member[draggable]').forEach(el => {
+      const id = el.dataset.id;
+      const teamIdx = parseInt(el.dataset.team);
+      const partyIdx = parseInt(el.dataset.party);
+      el.addEventListener('dragstart', e => { e.stopPropagation(); onDragStart(e, id, { team: teamIdx, party: partyIdx }); });
+      el.addEventListener('dragend', onDragEnd);
 
-      const rect = el.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      const dropAbove = e.clientY < midY;
+      el.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = el.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        el.classList.toggle('drop-above', e.clientY < midY);
+        el.classList.toggle('drop-below', e.clientY >= midY);
+      });
 
-      const targetTeam = teams[teamIdx];
-      const targetParty = targetTeam.parties[partyIdx];
-      const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
+      el.addEventListener('dragleave', () => {
+        el.classList.remove('drop-above', 'drop-below');
+      });
 
-      if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
-        showToast('Team is full (15/15)', 'err');
+      el.addEventListener('drop', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.remove('drop-above', 'drop-below');
+        if (!dragMemberId || dragMemberId === id) return;
+
+        const rect = el.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const dropAbove = e.clientY < midY;
+
+        const targetTeam = teams[teamIdx];
+        const targetParty = targetTeam.parties[partyIdx];
+        const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
+
+        if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
+          showToast('Team is full (15/15)', 'err');
+          dragMemberId = null;
+          dragSource = null;
+          return;
+        }
+
+        removeFromDragSource();
+
+        let targetIdx = targetParty.indexOf(id);
+        if (targetIdx === -1) targetIdx = targetParty.length;
+        if (!dropAbove) targetIdx++;
+
+        targetParty.splice(targetIdx, 0, dragMemberId);
+
         dragMemberId = null;
         dragSource = null;
-        return;
-      }
-
-      removeFromDragSource();
-
-      let targetIdx = targetParty.indexOf(id);
-      if (targetIdx === -1) targetIdx = targetParty.length;
-      if (!dropAbove) targetIdx++;
-
-      targetParty.splice(targetIdx, 0, dragMemberId);
-
-      dragMemberId = null;
-      dragSource = null;
-      renderAll();
+        renderAll();
+      });
     });
-  });
+  }
 }
 
 window.renameTeam = function (idx, newName) {
@@ -932,14 +946,15 @@ function renderAll() {
   renderTeams();
 }
 
-// Bench drop target
+// Bench drop target — guarded by isAdmin check
 const benchPanel = document.querySelector('.bench-panel');
-benchPanel.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
-benchPanel.addEventListener('dragenter', () => benchPanel.classList.add('drag-over-bench'));
+benchPanel.addEventListener('dragover', e => { if (!isAdmin) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+benchPanel.addEventListener('dragenter', () => { if (!isAdmin) return; benchPanel.classList.add('drag-over-bench'); });
 benchPanel.addEventListener('dragleave', e => {
+  if (!isAdmin) return;
   if (!benchPanel.contains(e.relatedTarget)) benchPanel.classList.remove('drag-over-bench');
 });
-benchPanel.addEventListener('drop', e => { benchPanel.classList.remove('drag-over-bench'); onDropBench(e); });
+benchPanel.addEventListener('drop', e => { if (!isAdmin) return; benchPanel.classList.remove('drag-over-bench'); onDropBench(e); });
 
 // ── SAVE TEAMS ──
 window.saveTeams = async function () {
