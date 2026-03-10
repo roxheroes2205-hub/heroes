@@ -148,10 +148,6 @@
   .member-chip .chip-class {
     font-size: 0.72rem; color: var(--text-muted);
   }
-  .member-chip .chip-level {
-    font-size: 0.72rem; color: var(--text-muted); background: var(--surface2);
-    padding: 2px 6px; border-radius: 4px;
-  }
 
   /* ── TEAMS GRID ── */
   .teams-area { display: flex; flex-direction: column; gap: 16px; }
@@ -200,7 +196,6 @@
   .team-member.dragging { opacity: 0.4; }
   .team-member .tm-name { font-size: 0.88rem; flex: 1; }
   .team-member .tm-class { font-size: 0.72rem; color: var(--text-muted); }
-  .team-member .tm-level { font-size: 0.72rem; color: var(--text-muted); background: var(--surface2); padding: 2px 6px; border-radius: 4px; }
   .team-member .tm-remove {
     background: none; border: none; color: var(--text-muted); cursor: pointer;
     font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1;
@@ -637,7 +632,6 @@ function renderBench() {
   list.innerHTML = filtered.map(m => {
     return `<div class="member-chip" draggable="true" data-id="${esc(m.id)}"
                  ondblclick="clickAssign('${esc(m.id)}')">
-      <span class="chip-level">Lv${esc(String(m.level || '?'))}</span>
       <span class="chip-name">${esc(m.name)}</span>
       <span class="chip-class">${esc(m.class || '')}</span>
     </div>`;
@@ -669,7 +663,6 @@ function renderTeams() {
       ? `<div class="team-body empty-hint">Drag members here</div>`
       : `<div class="team-body">${teamMembers.map(m => {
           return `<div class="team-member" draggable="true" data-id="${esc(m.id)}" data-team="${idx}">
-            <span class="tm-level">Lv${esc(String(m.level || '?'))}</span>
             <span class="tm-name">${esc(m.name)}</span>
             <span class="tm-class">${esc(m.class || '')}</span>
             <button class="tm-remove" onclick="removeFromTeam(${idx},'${esc(m.id)}')" title="Remove">&#10005;</button>

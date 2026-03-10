@@ -18,7 +18,7 @@ Admin tool to organize guild members into GvG teams (0–15 members each). Focus
 **Left column (narrow, ~300px): Member Pool**
 - Lists all guild members not yet assigned to a team
 - Search box to filter by name
-- Each member shows: name, class, level
+- Each member shows: name, class
 - Members are draggable
 - Double-click a member to add them to the team with the fewest members
 
@@ -26,7 +26,7 @@ Admin tool to organize guild members into GvG teams (0–15 members each). Focus
 - Each team is a card with:
   - **Editable team name** (click to rename, inline input)
   - **Member count** badge (e.g. "7 / 15")
-  - **Member list** inside the card — each member row shows name + class + level + an X button to remove
+  - **Member list** inside the card — each member row shows name + class + an X button to remove
   - **Drop zone** — drag members from the pool or other teams onto a card
   - **Delete team** button (admin only, with confirmation) — returns members to pool
 - Cards stack vertically
