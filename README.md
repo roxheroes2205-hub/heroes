@@ -37,16 +37,6 @@ Weekly hero point generation and guild ranking. Features include:
 - Rank tiers (Legend, Elite) with configurable thresholds
 - Monthly summary table with cumulative hero points
 
-### Teams (`teams.html`)
-Team composition builder for organizing guild event teams. Features include:
-- Select event type (KVM, xKVM, AA, GvG, xGvG) to view relevant performance stats
-- Drag-and-drop members between an unassigned bench and team slots
-- Double-click to quick-assign members to the team with fewest members
-- Auto-balance distributes all members across teams using a snake draft based on average event points
-- Configurable number of teams (1-10)
-- Team stats showing total and average points per team
-- Save and load team compositions (admin)
-
 ## Event Types
 
 | Type | Description |

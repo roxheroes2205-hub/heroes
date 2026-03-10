@@ -140,30 +140,30 @@
   .member-chip {
     display: flex; align-items: center; gap: 10px;
     padding: 8px 14px; cursor: grab; transition: background .1s;
-    user-select: none;
+    user-select: none; position: relative;
   }
   .member-chip:hover { background: var(--surface2); }
-  .member-chip.dragging { opacity: 0.4; }
+  .member-chip.dragging { opacity: 0.3; }
   .member-chip .chip-name { font-size: 0.88rem; flex: 1; }
   .member-chip .chip-class {
     font-size: 0.72rem; color: var(--text-muted);
   }
 
   /* ── TEAMS GRID ── */
-  .teams-area { display: flex; flex-direction: column; gap: 16px; }
+  .teams-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 
   .team-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
     overflow: hidden;
   }
-  .team-card.drag-over { border-color: var(--accent); background: rgba(91,127,255,0.05); }
+  .team-card.drag-over { border-color: var(--accent); background: rgba(91,127,255,0.05); box-shadow: 0 0 12px rgba(91,127,255,0.25); }
   .team-card.team-full { border-color: var(--text-muted); }
 
   .team-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
   }
-  .team-header-left { display: flex; align-items: center; gap: 10px; }
+  .team-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; overflow: hidden; }
   .team-title {
     font-size: 0.95rem; font-weight: 600;
     background: none; border: none; color: var(--text); outline: none;
@@ -172,28 +172,42 @@
   .team-title:focus { background: var(--surface2); border: 1px solid var(--border); }
   .team-count {
     font-size: 0.78rem; color: var(--text-muted); background: var(--surface2);
-    padding: 2px 8px; border-radius: 10px;
+    padding: 2px 10px; border-radius: 10px; white-space: nowrap;
   }
   .team-count.full { background: var(--danger); color: #fff; }
 
-  .team-header-right { display: flex; align-items: center; gap: 8px; }
+  .team-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
   .team-body {
-    min-height: 48px; padding: 4px 0;
+    min-height: 32px; padding: 2px 0;
   }
   .team-body.empty-hint {
     display: flex; align-items: center; justify-content: center;
     color: var(--text-muted); font-size: 0.82rem; font-style: italic;
-    min-height: 64px;
+    min-height: 64px; border: 2px dashed var(--border); border-radius: 6px;
+    margin: 8px 10px; transition: border-color .15s, color .15s;
+  }
+  .team-card.drag-over .team-body.empty-hint {
+    border-color: var(--accent); color: var(--accent);
+  }
+  .bench-panel.drag-over-bench {
+    border-color: var(--accent); box-shadow: 0 0 12px rgba(91,127,255,0.25);
   }
 
   .team-member {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 14px; cursor: grab; transition: background .1s;
-    user-select: none;
+    padding: 5px 10px; cursor: grab; transition: background .1s, box-shadow .1s;
+    user-select: none; position: relative;
+    border-bottom: 1px dashed var(--border);
   }
+  .team-member:last-child { border-bottom: none; }
   .team-member:hover { background: var(--surface2); }
-  .team-member.dragging { opacity: 0.4; }
+  .team-member.dragging { opacity: 0.3; background: rgba(91,127,255,0.08); }
+  .tm-grip {
+    color: var(--border); font-size: 0.7rem; letter-spacing: 1px; flex-shrink: 0;
+    cursor: grab; opacity: 0.4; transition: opacity .15s;
+  }
+  .team-member:hover .tm-grip { opacity: 1; color: var(--text-muted); }
   .team-member .tm-name { font-size: 0.88rem; flex: 1; }
   .team-member .tm-class { font-size: 0.72rem; color: var(--text-muted); }
   .team-member .tm-remove {
@@ -202,22 +216,57 @@
   }
   .team-member .tm-remove:hover { color: var(--danger); background: rgba(224,82,82,0.1); }
 
-  /* ── SAVED COMPOSITIONS ── */
-  .saved-list { margin-top: 24px; }
-  .saved-list h3 {
-    font-size: 0.82rem; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--text-muted); margin-bottom: 12px;
+  /* ── PT LEAD ── */
+  .team-member.is-lead { border-left: 3px solid #f5c542; background: rgba(245,197,66,0.06); }
+  .tm-crown {
+    color: #f5c542; font-size: 0.9rem; cursor: pointer; flex-shrink: 0;
+    line-height: 1; height: 1em; overflow: hidden;
   }
-  .saved-item {
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px 16px; margin-bottom: 8px; cursor: pointer; transition: background .1s;
+  .tm-crown-empty {
+    color: var(--border); font-size: 0.9rem; cursor: pointer; flex-shrink: 0;
+    line-height: 1; height: 1em; overflow: hidden;
+    opacity: 0; transition: opacity .15s;
   }
-  .saved-item:hover { background: var(--surface2); }
-  .saved-item-info { display: flex; flex-direction: column; gap: 2px; }
-  .saved-item-name { font-size: 0.9rem; font-weight: 500; }
-  .saved-item-meta { font-size: 0.78rem; color: var(--text-muted); }
-  .saved-item-actions { display: flex; gap: 6px; }
+  .team-member:hover .tm-crown-empty { opacity: 1; }
+  .team-member.drop-above {
+    box-shadow: 0 -3px 0 0 var(--accent);
+    background: rgba(91,127,255,0.06);
+  }
+  .team-member.drop-above::before {
+    content: ''; position: absolute; left: 0; right: 0; top: -2px;
+    height: 3px; background: var(--accent); border-radius: 2px;
+    box-shadow: 0 0 8px rgba(91,127,255,0.5);
+  }
+  .team-member.drop-below {
+    box-shadow: 0 3px 0 0 var(--accent);
+    background: rgba(91,127,255,0.06);
+  }
+  .team-member.drop-below::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -2px;
+    height: 3px; background: var(--accent); border-radius: 2px;
+    box-shadow: 0 0 8px rgba(91,127,255,0.5);
+  }
+
+  /* ── PARTY GROUPS (rows of 5) ── */
+  .party-group {
+    border: 1px solid var(--border); border-radius: 6px; margin: 3px 6px;
+    overflow: hidden;
+  }
+  .party-group-header {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); padding: 4px 12px; background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .party-group-empty { opacity: 0.5; }
+  .party-group.drag-over { border-color: var(--accent); background: rgba(91,127,255,0.04); }
+  .party-empty-slots { display: flex; flex-direction: column; }
+  .empty-slot {
+    height: 26px; border-bottom: 1px dashed var(--border); margin: 0 10px;
+  }
+  .empty-slot:last-child { border-bottom: none; }
+  .party-overfull { border-color: #e0a030 !important; }
+  .party-overfull .party-group-header { color: #e0a030; background: rgba(224,160,48,0.1); }
+
 </style>
 </head>
 <body>
@@ -236,7 +285,6 @@
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
     <a href="ranking.html">Ranking</a>
-    <a href="teams.html">Teams</a>
     <a href="teams-gvg.html" class="active">GvG Teams</a>
   </nav>
 
@@ -246,7 +294,7 @@
       <div style="flex:1"></div>
       <div class="admin-only" style="display:none">
         <button class="btn btn-ghost" onclick="addTeam()">+ New Team</button>
-        <button class="btn btn-primary" onclick="openSaveModal()">Save Composition</button>
+        <button class="btn btn-primary" onclick="saveTeams()">Save Teams</button>
       </div>
     </div>
 
@@ -267,13 +315,6 @@
       <div class="teams-area" id="teams-area"></div>
     </div>
 
-    <!-- SAVED COMPOSITIONS -->
-    <div class="saved-list">
-      <h3>Saved GvG Compositions</h3>
-      <div id="saved-compositions-list">
-        <div style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">Loading...</div>
-      </div>
-    </div>
   </main>
 </div>
 
@@ -293,36 +334,6 @@
       <input type="password" id="login-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" />
     </div>
     <button class="btn btn-primary" style="width:100%" id="login-btn" onclick="doLogin()">Sign In</button>
-  </div>
-</div>
-
-<!-- ── SAVE COMPOSITION MODAL ── -->
-<div class="modal-backdrop" id="save-modal">
-  <div class="modal" style="width:420px">
-    <button class="modal-close" onclick="closeModal('save-modal')">&#10005;</button>
-    <h2>Save GvG Composition</h2>
-    <p class="subtitle">Give this composition a name so you can load it later.</p>
-    <div class="form-group">
-      <label>Name</label>
-      <input type="text" id="save-comp-name" placeholder="e.g. Week 10 GvG" />
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('save-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveComposition()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── DELETE COMPOSITION MODAL ── -->
-<div class="modal-backdrop" id="delete-comp-modal">
-  <div class="modal" style="width:380px">
-    <button class="modal-close" onclick="closeModal('delete-comp-modal')">&#10005;</button>
-    <h2>Delete Composition</h2>
-    <p style="margin:14px 0;color:var(--text-muted)">Remove <strong id="delete-comp-name" style="color:var(--danger)"></strong>? This cannot be undone.</p>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('delete-comp-modal')">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmDeleteComp()">Delete</button>
-    </div>
   </div>
 </div>
 
@@ -347,8 +358,7 @@ import { initializeApp }                            from 'https://www.gstatic.co
 import { getAuth, signInWithEmailAndPassword,
          signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 import { getFirestore, collection, onSnapshot,
-         getDocs, setDoc, deleteDoc, doc, query, orderBy, where,
-         addDoc, Timestamp, serverTimestamp }        from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+         setDoc, doc, query, orderBy, getDoc }       from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 
 // ── FIREBASE INIT ──
 const app  = initializeApp({
@@ -368,17 +378,22 @@ const MAX_TEAM_SIZE = 15;
 // ── STATE ──
 let members      = [];
 let isAdmin      = false;
-let compositions = [];
-let deleteCompId = null;
 let deleteTeamIdx = null;
+let teamsLoaded  = false;
 
 // Team builder state
-let teams    = [];   // array of { name, memberIds: [] }
-let benchIds = [];   // member IDs not assigned to any team
+// Each team: { name, parties: [[], [], []], leadId }
+let teams      = [];
+let benchIds   = [];
+let savedTeams = null;
 
 // Drag state
 let dragMemberId = null;
-let dragSource   = null; // 'bench' | team index
+let dragSource   = null; // 'bench' | { team, party }
+
+// ── HELPERS ──
+function getAllMemberIds(team) { return team.parties.flat(); }
+function getTeamSize(team) { return team.parties.flat().length; }
 
 // ── UTILS ──
 function esc(str) {
@@ -453,23 +468,57 @@ document.getElementById('login-password').addEventListener('keydown', e => {
 });
 
 // ── FIRESTORE LISTENERS ──
+function parseTeamData(t) {
+  const validId = id => members.some(m => m.id === id);
+  // Support new parties format (stored as map {"0": [...], "1": [...], "2": [...]})
+  if (t.parties) {
+    const raw = Array.isArray(t.parties)
+      ? t.parties
+      : [t.parties['0'] || [], t.parties['1'] || [], t.parties['2'] || []];
+    return {
+      name: t.name,
+      parties: raw.map(p => (p || []).filter(validId)),
+      leadId: t.leadId || null,
+    };
+  }
+  // Legacy: flat memberIds → distribute into parties of 5
+  const ids = (t.memberIds || []).filter(validId);
+  const parties = [[], [], []];
+  ids.forEach((id, i) => {
+    const pi = Math.min(Math.floor(i / 5), 2);
+    parties[pi].push(id);
+  });
+  return { name: t.name, parties, leadId: t.leadId || null };
+}
+
 function startListeners() {
   const mq = query(collection(db, 'members'), orderBy('name'));
   onSnapshot(mq, snap => {
     members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (savedTeams && !teamsLoaded) {
+      teams = savedTeams.map(t => parseTeamData(t));
+      teamsLoaded = true;
+      savedTeams = null;
+    }
     rebuildBench();
     renderAll();
   });
 
-  // Only load GvG compositions
-  const cq = query(
-    collection(db, 'teamCompositions'),
-    where('eventType', '==', 'GvG'),
-    orderBy('createdAt', 'desc')
-  );
-  onSnapshot(cq, snap => {
-    compositions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderSavedCompositions();
+  // Load the single GvG composition
+  onSnapshot(doc(db, 'teamCompositions', 'gvg'), snap => {
+    if (snap.exists() && !teamsLoaded) {
+      const data = snap.data();
+      if (members.length > 0) {
+        teams = (data.teams || []).map(t => parseTeamData(t));
+        teamsLoaded = true;
+        rebuildBench();
+        renderAll();
+      } else {
+        savedTeams = data.teams || [];
+      }
+    }
+  }, err => {
+    console.error('GvG teams load error:', err);
   });
 }
 startListeners();
@@ -477,14 +526,21 @@ startListeners();
 // ── TEAM MANAGEMENT ──
 function rebuildBench() {
   const assigned = new Set();
-  teams.forEach(t => t.memberIds.forEach(id => assigned.add(id)));
+  teams.forEach(t => getAllMemberIds(t).forEach(id => assigned.add(id)));
   benchIds = members.filter(m => !assigned.has(m.id)).map(m => m.id);
 }
 
 window.addTeam = function () {
   if (!isAdmin) return;
   const num = teams.length + 1;
-  teams.push({ name: `Team ${num}`, memberIds: [] });
+  teams.push({ name: `Team ${num}`, parties: [[], [], []], leadId: null });
+  renderAll();
+};
+
+window.setLead = function (teamIdx, memberId) {
+  if (!isAdmin) return;
+  const team = teams[teamIdx];
+  team.leadId = (team.leadId === memberId) ? null : memberId;
   renderAll();
 };
 
@@ -497,7 +553,7 @@ window.askDeleteTeam = function (idx) {
 window.confirmDeleteTeam = function () {
   if (deleteTeamIdx === null) return;
   const team = teams[deleteTeamIdx];
-  benchIds.push(...team.memberIds);
+  benchIds.push(...getAllMemberIds(team));
   teams.splice(deleteTeamIdx, 1);
   deleteTeamIdx = null;
   closeModal('delete-team-modal');
@@ -517,6 +573,7 @@ function onDragEnd(e) {
   dragMemberId = null;
   dragSource = null;
   document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  document.querySelectorAll('.drop-above,.drop-below').forEach(el => el.classList.remove('drop-above', 'drop-below'));
 }
 
 function onDragOverTeam(e) {
@@ -535,32 +592,78 @@ function onDragLeaveTeam(e, teamCard) {
   }
 }
 
-function onDropTeam(e, teamIdx) {
+function removeFromDragSource() {
+  if (dragSource === 'bench') {
+    benchIds = benchIds.filter(id => id !== dragMemberId);
+  } else if (dragSource && typeof dragSource === 'object') {
+    const srcTeam = teams[dragSource.team];
+    const party = srcTeam.parties[dragSource.party];
+    const idx = party.indexOf(dragMemberId);
+    if (idx !== -1) party.splice(idx, 1);
+    if (srcTeam.leadId === dragMemberId) {
+      const allIds = getAllMemberIds(srcTeam);
+      srcTeam.leadId = allIds.length > 0 ? allIds[0] : null;
+    }
+  }
+}
+
+// Drop into a specific party group
+function onDropParty(e, teamIdx, partyIdx, insertIdx) {
   e.preventDefault();
-  const card = e.currentTarget;
-  card.classList.remove('drag-over');
+  e.stopPropagation();
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  document.querySelectorAll('.drop-above,.drop-below').forEach(el => el.classList.remove('drop-above', 'drop-below'));
 
   if (!dragMemberId) return;
 
-  // Reject if team is full (unless moving within same team)
-  if (teams[teamIdx].memberIds.length >= MAX_TEAM_SIZE && dragSource !== teamIdx) {
+  const targetTeam = teams[teamIdx];
+  const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
+
+  if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
     showToast('Team is full (15/15)', 'err');
     dragMemberId = null;
     dragSource = null;
     return;
   }
 
-  // Remove from source
-  if (dragSource === 'bench') {
-    benchIds = benchIds.filter(id => id !== dragMemberId);
-  } else if (typeof dragSource === 'number') {
-    teams[dragSource].memberIds = teams[dragSource].memberIds.filter(id => id !== dragMemberId);
+  removeFromDragSource();
+
+  const targetParty = targetTeam.parties[partyIdx];
+  if (typeof insertIdx === 'number') {
+    targetParty.splice(insertIdx, 0, dragMemberId);
+  } else {
+    targetParty.push(dragMemberId);
   }
 
-  // Add to target team
-  if (!teams[teamIdx].memberIds.includes(dragMemberId)) {
-    teams[teamIdx].memberIds.push(dragMemberId);
+  dragMemberId = null;
+  dragSource = null;
+  renderAll();
+}
+
+// Fallback: drop on team card puts member in first party with space
+function onDropTeam(e, teamIdx) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+  if (!dragMemberId) return;
+
+  const targetTeam = teams[teamIdx];
+  const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
+
+  if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
+    showToast('Team is full (15/15)', 'err');
+    dragMemberId = null;
+    dragSource = null;
+    return;
   }
+
+  removeFromDragSource();
+
+  // Find first party with room, else first party
+  let pi = targetTeam.parties.findIndex(p => p.length < 5);
+  if (pi === -1) pi = 0;
+  targetTeam.parties[pi].push(dragMemberId);
 
   dragMemberId = null;
   dragSource = null;
@@ -571,9 +674,7 @@ function onDropBench(e) {
   e.preventDefault();
   if (!dragMemberId) return;
 
-  if (typeof dragSource === 'number') {
-    teams[dragSource].memberIds = teams[dragSource].memberIds.filter(id => id !== dragMemberId);
-  }
+  removeFromDragSource();
 
   if (!benchIds.includes(dragMemberId)) {
     benchIds.push(dragMemberId);
@@ -588,25 +689,41 @@ function onDropBench(e) {
 function clickAssign(memberId) {
   if (teams.length === 0) { showToast('Create a team first', 'err'); return; }
 
-  // Find team with fewest members that isn't full
-  let minIdx = -1;
-  let minCount = Infinity;
+  // Find team with fewest members that has a party with space
+  let bestTeam = -1, bestParty = -1, minSize = Infinity;
   for (let i = 0; i < teams.length; i++) {
-    if (teams[i].memberIds.length < MAX_TEAM_SIZE && teams[i].memberIds.length < minCount) {
-      minCount = teams[i].memberIds.length;
-      minIdx = i;
+    const size = getTeamSize(teams[i]);
+    if (size < MAX_TEAM_SIZE && size < minSize) {
+      const pi = teams[i].parties.findIndex(p => p.length < 5);
+      if (pi !== -1) { minSize = size; bestTeam = i; bestParty = pi; }
     }
   }
-  if (minIdx === -1) { showToast('All teams are full', 'err'); return; }
+  // Fallback: any team with overall space
+  if (bestTeam === -1) {
+    for (let i = 0; i < teams.length; i++) {
+      const size = getTeamSize(teams[i]);
+      if (size < MAX_TEAM_SIZE && size < minSize) {
+        minSize = size; bestTeam = i; bestParty = 0;
+      }
+    }
+  }
+  if (bestTeam === -1) { showToast('All teams are full', 'err'); return; }
 
   benchIds = benchIds.filter(id => id !== memberId);
-  teams[minIdx].memberIds.push(memberId);
+  teams[bestTeam].parties[bestParty].push(memberId);
   renderAll();
 }
 
 // Remove member from team back to bench
-window.removeFromTeam = function (teamIdx, memberId) {
-  teams[teamIdx].memberIds = teams[teamIdx].memberIds.filter(id => id !== memberId);
+window.removeFromTeam = function (teamIdx, partyIdx, memberId) {
+  const team = teams[teamIdx];
+  const party = team.parties[partyIdx];
+  const idx = party.indexOf(memberId);
+  if (idx !== -1) party.splice(idx, 1);
+  if (team.leadId === memberId) {
+    const allIds = getAllMemberIds(team);
+    team.leadId = allIds.length > 0 ? allIds[0] : null;
+  }
   benchIds.push(memberId);
   renderAll();
 };
@@ -656,25 +773,67 @@ function renderTeams() {
   }
 
   area.innerHTML = teams.map((team, idx) => {
-    const teamMembers = team.memberIds.map(id => members.find(m => m.id === id)).filter(Boolean);
-    const isFull = teamMembers.length >= MAX_TEAM_SIZE;
+    const allIds = getAllMemberIds(team);
+    const teamSize = allIds.length;
+    const isFull = teamSize >= MAX_TEAM_SIZE;
 
-    const bodyHtml = teamMembers.length === 0
-      ? `<div class="team-body empty-hint">Drag members here</div>`
-      : `<div class="team-body">${teamMembers.map(m => {
-          return `<div class="team-member" draggable="true" data-id="${esc(m.id)}" data-team="${idx}">
+    // Auto-assign first member as lead if no lead set
+    if (teamSize > 0 && (!team.leadId || !allIds.includes(team.leadId))) {
+      team.leadId = allIds[0];
+    }
+
+    const groupsHtml = team.parties.map((party, pi) => {
+      const isOverfull = party.length > 5;
+
+      // Sort: lead first within this party
+      let partyMembers = party.map(id => members.find(m => m.id === id)).filter(Boolean);
+      if (team.leadId) {
+        partyMembers.sort((a, b) => (a.id === team.leadId ? -1 : b.id === team.leadId ? 1 : 0));
+      }
+
+      if (partyMembers.length === 0) {
+        return `<div class="party-group party-group-empty" data-team-idx="${idx}" data-party-idx="${pi}">
+          <div class="party-group-header">Party ${pi + 1} (0/5)</div>
+          <div class="party-empty-slots"><span class="empty-slot"></span></div>
+        </div>`;
+      }
+
+      const memberRows = partyMembers.map(m => {
+        const isLead = m.id === team.leadId;
+        const crownHtml = isLead
+          ? `<span class="tm-crown" onclick="setLead(${idx},'${esc(m.id)}')" title="Remove PT Lead">&#x1F451;</span>`
+          : (isAdmin
+            ? `<span class="tm-crown-empty admin-only" onclick="setLead(${idx},'${esc(m.id)}')" title="Set as PT Lead">&#x1F451;</span>`
+            : '');
+        return `<div class="team-member${isLead ? ' is-lead' : ''}" draggable="true" data-id="${esc(m.id)}" data-team="${idx}" data-party="${pi}">
+            <span class="tm-grip">&#8942;</span>
+            ${crownHtml}
             <span class="tm-name">${esc(m.name)}</span>
             <span class="tm-class">${esc(m.class || '')}</span>
-            <button class="tm-remove" onclick="removeFromTeam(${idx},'${esc(m.id)}')" title="Remove">&#10005;</button>
+            <button class="tm-remove" onclick="removeFromTeam(${idx},${pi},'${esc(m.id)}')" title="Remove">&#10005;</button>
           </div>`;
-        }).join('')}</div>`;
+      }).join('');
+
+      const emptyCount = Math.max(0, 5 - partyMembers.length);
+      const emptySlots = emptyCount > 0
+        ? `<div class="party-empty-slots">${'<span class="empty-slot"></span>'.repeat(emptyCount)}</div>`
+        : '';
+
+      return `<div class="party-group${isOverfull ? ' party-overfull' : ''}" data-team-idx="${idx}" data-party-idx="${pi}">
+        <div class="party-group-header">Party ${pi + 1} (${partyMembers.length}/5)${isOverfull ? ' ⚠' : ''}</div>
+        ${memberRows}
+        ${emptySlots}
+      </div>`;
+    }).join('');
+
+    const bodyHtml = `<div class="team-body">${groupsHtml}</div>`;
 
     return `<div class="team-card${isFull ? ' team-full' : ''}" data-team-idx="${idx}">
       <div class="team-header">
         <div class="team-header-left">
           <input class="team-title" value="${esc(team.name)}" data-team-idx="${idx}"
                  onchange="renameTeam(${idx}, this.value)" />
-          <span class="team-count${isFull ? ' full' : ''}">${teamMembers.length} / ${MAX_TEAM_SIZE}${isFull ? ' Full' : ''}</span>
+          <span class="team-count${isFull ? ' full' : ''}">${teamSize} / ${MAX_TEAM_SIZE}${isFull ? ' Full' : ''}</span>
         </div>
         <div class="team-header-right admin-only" ${isAdmin ? '' : 'style="display:none"'}>
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;color:var(--danger);" onclick="askDeleteTeam(${idx})">Delete</button>
@@ -684,7 +843,7 @@ function renderTeams() {
     </div>`;
   }).join('');
 
-  // Attach drag listeners to team cards (drop targets)
+  // Team card fallback drop targets
   area.querySelectorAll('.team-card').forEach(card => {
     const idx = parseInt(card.dataset.teamIdx);
     card.addEventListener('dragover', onDragOverTeam);
@@ -693,12 +852,74 @@ function renderTeams() {
     card.addEventListener('drop', e => onDropTeam(e, idx));
   });
 
-  // Attach drag listeners to team members
+  // Party group drop targets
+  area.querySelectorAll('.party-group').forEach(pg => {
+    const teamIdx = parseInt(pg.dataset.teamIdx);
+    const partyIdx = parseInt(pg.dataset.partyIdx);
+    pg.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; });
+    pg.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); pg.classList.add('drag-over'); });
+    pg.addEventListener('dragleave', e => { if (!pg.contains(e.relatedTarget)) pg.classList.remove('drag-over'); });
+    pg.addEventListener('drop', e => {
+      pg.classList.remove('drag-over');
+      onDropParty(e, teamIdx, partyIdx);
+    });
+  });
+
+  // Member drag + positional drop within party
   area.querySelectorAll('.team-member[draggable]').forEach(el => {
     const id = el.dataset.id;
     const teamIdx = parseInt(el.dataset.team);
-    el.addEventListener('dragstart', e => onDragStart(e, id, teamIdx));
+    const partyIdx = parseInt(el.dataset.party);
+    el.addEventListener('dragstart', e => { e.stopPropagation(); onDragStart(e, id, { team: teamIdx, party: partyIdx }); });
     el.addEventListener('dragend', onDragEnd);
+
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = el.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      el.classList.toggle('drop-above', e.clientY < midY);
+      el.classList.toggle('drop-below', e.clientY >= midY);
+    });
+
+    el.addEventListener('dragleave', () => {
+      el.classList.remove('drop-above', 'drop-below');
+    });
+
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.remove('drop-above', 'drop-below');
+      if (!dragMemberId || dragMemberId === id) return;
+
+      const rect = el.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const dropAbove = e.clientY < midY;
+
+      const targetTeam = teams[teamIdx];
+      const targetParty = targetTeam.parties[partyIdx];
+      const isFromSameTeam = dragSource && typeof dragSource === 'object' && dragSource.team === teamIdx;
+
+      if (getTeamSize(targetTeam) >= MAX_TEAM_SIZE && !isFromSameTeam) {
+        showToast('Team is full (15/15)', 'err');
+        dragMemberId = null;
+        dragSource = null;
+        return;
+      }
+
+      removeFromDragSource();
+
+      let targetIdx = targetParty.indexOf(id);
+      if (targetIdx === -1) targetIdx = targetParty.length;
+      if (!dropAbove) targetIdx++;
+
+      targetParty.splice(targetIdx, 0, dragMemberId);
+
+      dragMemberId = null;
+      dragSource = null;
+      renderAll();
+    });
   });
 }
 
@@ -714,91 +935,29 @@ function renderAll() {
 // Bench drop target
 const benchPanel = document.querySelector('.bench-panel');
 benchPanel.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
-benchPanel.addEventListener('drop', onDropBench);
+benchPanel.addEventListener('dragenter', () => benchPanel.classList.add('drag-over-bench'));
+benchPanel.addEventListener('dragleave', e => {
+  if (!benchPanel.contains(e.relatedTarget)) benchPanel.classList.remove('drag-over-bench');
+});
+benchPanel.addEventListener('drop', e => { benchPanel.classList.remove('drag-over-bench'); onDropBench(e); });
 
-// ── SAVE / LOAD COMPOSITIONS ──
-window.openSaveModal = function () {
-  document.getElementById('save-comp-name').value = '';
-  openModal('save-modal');
-};
-
-window.saveComposition = async function () {
+// ── SAVE TEAMS ──
+window.saveTeams = async function () {
   if (!isAdmin) return;
-  const name = document.getElementById('save-comp-name').value.trim();
-  if (!name) { showToast('Please enter a name.', 'err'); return; }
-
-  const data = {
-    name,
-    eventType: 'GvG',
-    teams: teams.map(t => ({ name: t.name, memberIds: [...t.memberIds] })),
-    createdAt: serverTimestamp(),
-  };
-
   try {
-    await addDoc(collection(db, 'teamCompositions'), data);
-    showToast('Composition saved!', 'ok');
-    closeModal('save-modal');
+    await setDoc(doc(db, 'teamCompositions', 'gvg'), {
+      eventType: 'GvG',
+      teams: teams.map(t => ({
+        name: t.name,
+        parties: Object.fromEntries(t.parties.map((p, i) => [String(i), [...p]])),
+        leadId: t.leadId || null,
+      })),
+    });
+    showToast('Teams saved!', 'ok');
   } catch (e) {
     showToast('Failed to save: ' + e.message, 'err');
   }
 };
-
-window.loadComposition = function (compId) {
-  const comp = compositions.find(c => c.id === compId);
-  if (!comp) return;
-
-  teams = (comp.teams || []).map(t => ({
-    name: t.name,
-    memberIds: (t.memberIds || []).filter(id => members.some(m => m.id === id)),
-  }));
-  rebuildBench();
-  renderAll();
-  showToast(`Loaded "${comp.name}"`, 'ok');
-};
-
-window.askDeleteComp = function (compId, compName) {
-  deleteCompId = compId;
-  document.getElementById('delete-comp-name').textContent = compName;
-  openModal('delete-comp-modal');
-};
-
-window.confirmDeleteComp = async function () {
-  if (!deleteCompId) return;
-  try {
-    await deleteDoc(doc(db, 'teamCompositions', deleteCompId));
-    showToast('Composition deleted.', 'ok');
-  } catch (e) {
-    showToast('Failed to delete: ' + e.message, 'err');
-  }
-  deleteCompId = null;
-  closeModal('delete-comp-modal');
-};
-
-function renderSavedCompositions() {
-  const container = document.getElementById('saved-compositions-list');
-  if (compositions.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;font-style:italic;">No saved GvG compositions yet.</div>';
-    return;
-  }
-
-  container.innerHTML = compositions.map(c => {
-    const teamCount = (c.teams || []).length;
-    const totalMembers = (c.teams || []).reduce((s, t) => s + (t.memberIds || []).length, 0);
-    const dateStr = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : '';
-    return `<div class="saved-item">
-      <div class="saved-item-info" onclick="loadComposition('${esc(c.id)}')" style="flex:1;cursor:pointer;">
-        <span class="saved-item-name">${esc(c.name)}</span>
-        <span class="saved-item-meta">
-          ${teamCount} teams &middot; ${totalMembers} members &middot; ${dateStr}
-        </span>
-      </div>
-      <div class="saved-item-actions admin-only" ${isAdmin ? '' : 'style="display:none"'}>
-        <button class="btn btn-ghost" style="padding:6px 10px;font-size:0.8rem;" onclick="loadComposition('${esc(c.id)}')">Load</button>
-        <button class="btn btn-ghost" style="padding:6px 10px;font-size:0.8rem;color:var(--danger);" onclick="askDeleteComp('${esc(c.id)}','${esc(c.name)}')">Delete</button>
-      </div>
-    </div>`;
-  }).join('');
-}
 
 // Expose clickAssign to inline handlers
 window.clickAssign = clickAssign;
