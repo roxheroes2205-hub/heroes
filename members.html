@@ -217,6 +217,31 @@
   }
   .name-edit-input:focus { border-color: var(--accent); }
   .name-same { font-size: 0.83rem; color: var(--text-muted); }
+
+  /* ── CLASS SETTINGS ── */
+  .class-list { list-style: none; padding: 0; margin: 0 0 16px; }
+  .class-list li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px;
+    margin-bottom: 6px; background: var(--surface2); transition: background .15s;
+  }
+  .class-list li:hover { background: var(--surface); }
+  .class-list .class-name { flex: 1; font-size: 0.9rem; color: var(--text); }
+  .class-list .class-name-input {
+    flex: 1; background: var(--bg); border: 1px solid var(--accent);
+    border-radius: 5px; padding: 4px 8px; color: var(--text);
+    font-size: 0.9rem; outline: none;
+  }
+  .class-list .class-actions { display: flex; gap: 4px; }
+  .class-list .class-actions button { padding: 4px 8px; font-size: 0.78rem; }
+  .add-class-row { display: flex; gap: 8px; }
+  .add-class-row input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 12px; color: var(--text);
+    font-size: 0.9rem; outline: none;
+  }
+  .add-class-row input:focus { border-color: var(--accent); }
+  .class-affected-count { font-size: 0.78rem; color: var(--text-muted); margin-left: 4px; }
 </style>
 </head>
 <body>
@@ -246,6 +271,7 @@
     <div class="toolbar">
       <input class="search-box" type="text" placeholder="Search by name or ID..." id="search-input" oninput="renderTable()" />
       <div class="toolbar-actions" id="admin-toolbar" style="display:none">
+        <button class="btn btn-ghost" onclick="openModal('class-settings-modal')">&#9881; Class Settings</button>
         <button class="btn btn-ghost" onclick="openImport()">Import Members</button>
         <button class="btn btn-ghost" onclick="toggleWorkflow()" id="workflow-toggle-btn">Update via Claude</button>
         <button class="btn btn-primary" onclick="openAdd()">+ Add Member</button>
@@ -303,6 +329,7 @@
           <tr>
             <th onclick="sortBy('name')">Name <span class="sort-icon" id="sort-name">↕</span></th>
             <th onclick="sortBy('characterId')">ID <span class="sort-icon" id="sort-characterId">↕</span></th>
+            <th onclick="sortBy('class')">Main PvP Class <span class="sort-icon" id="sort-class">↕</span></th>
             <th onclick="sortBy('level')">Level <span class="sort-icon" id="sort-level">↕</span></th>
             <th onclick="sortBy('weeklyContribution')">7-day Contrib <span class="sort-icon" id="sort-weeklyContribution">↕</span></th>
             <th onclick="sortBy('attempts')">Attempts <span class="sort-icon" id="sort-attempts">↕</span></th>
@@ -310,7 +337,7 @@
           </tr>
         </thead>
         <tbody id="roster-body">
-          <tr class="loading-row"><td colspan="6">Loading roster...</td></tr>
+          <tr class="loading-row"><td colspan="7">Loading roster...</td></tr>
         </tbody>
       </table>
       <div class="empty-state" id="empty-state" style="display:none">
@@ -380,6 +407,12 @@
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label>Main PvP Class</label>
+        <select id="f-class">
+          <option value="">— None —</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Level</label>
         <input type="number" id="f-level" placeholder="e.g. 85" min="1" />
       </div>
@@ -428,6 +461,21 @@
   </div>
 </div>
 
+<!-- ── CLASS SETTINGS MODAL ── -->
+<div class="modal-backdrop" id="class-settings-modal">
+  <div class="modal" style="width:480px">
+    <button class="modal-close" onclick="closeModal('class-settings-modal')">&#10005;</button>
+    <h2>PvP Class Settings</h2>
+    <p class="subtitle">Manage available PvP class names. Renaming a class updates all members.</p>
+    <ul class="class-list" id="class-list"></ul>
+    <div class="add-class-row">
+      <input type="text" id="new-class-input" placeholder="New class name..." />
+      <button class="btn btn-primary" onclick="addClass()">Add</button>
+    </div>
+    <div class="error-msg" id="class-settings-error"></div>
+  </div>
+</div>
+
 <!-- ── TOAST ── -->
 <div id="toast"></div>
 
@@ -437,6 +485,7 @@ import { getAuth, signInWithEmailAndPassword,
          signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 import { getFirestore, collection, onSnapshot,
          addDoc, setDoc, deleteDoc, doc,
+         writeBatch, updateDoc,
          serverTimestamp, query, orderBy }          from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 
 // ── FIREBASE INIT ──
@@ -463,6 +512,7 @@ let deleteTargetId = null;
 let unsubscribe    = null;
 let isAdmin        = false;
 let stagingRows    = [];
+let classList      = [];
 
 // ── AUTH STATE ──
 onAuthStateChanged(auth, user => {
@@ -497,6 +547,48 @@ function startListener() {
   });
 }
 startListener();
+
+// ── CLASS LIST LISTENER ──
+onSnapshot(doc(db, 'settings', 'classes'), snap => {
+  classList = snap.exists() ? (snap.data().names || []) : [];
+  classList.sort((a, b) => a.localeCompare(b));
+  populateClassDropdown();
+  renderClassList();
+}, err => { console.error('Failed to load class settings:', err); });
+
+function populateClassDropdown() {
+  const select = document.getElementById('f-class');
+  if (!select) return;
+  const cur = select.value;
+  select.innerHTML = '<option value="">— None —</option>';
+  classList.forEach(cls => {
+    const opt = document.createElement('option');
+    opt.value = cls;
+    opt.textContent = cls;
+    select.appendChild(opt);
+  });
+  if (classList.includes(cur) || cur === '') select.value = cur;
+}
+
+function renderClassList() {
+  const ul = document.getElementById('class-list');
+  if (!ul) return;
+  if (classList.length === 0) {
+    ul.innerHTML = '<li style="color:var(--text-muted);justify-content:center;border:1px dashed var(--border)">No classes defined yet</li>';
+    return;
+  }
+  ul.innerHTML = classList.map((cls, idx) => {
+    const count = members.filter(m => m.class === cls).length;
+    const countLabel = count > 0 ? `<span class="class-affected-count">(${count})</span>` : '';
+    return `<li data-idx="${idx}">
+      <span class="class-name">${esc(cls)}${countLabel}</span>
+      <div class="class-actions">
+        <button class="btn btn-ghost" onclick="startRenameClass(${idx})" title="Rename">&#9998;</button>
+        <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteClass(${idx})" title="Delete">&#10005;</button>
+      </div>
+    </li>`;
+  }).join('');
+}
 
 // ── AUTH ──
 window.doLogin = async function () {
@@ -537,7 +629,8 @@ window.renderTable = function () {
   const q = (document.getElementById('search-input').value || '').toLowerCase();
   let rows = members.filter(m =>
     (m.name || '').toLowerCase().includes(q) ||
-    (m.characterId || '').includes(q)
+    (m.characterId || '').includes(q) ||
+    (m.class || '').toLowerCase().includes(q)
   );
 
   rows.sort((a, b) => {
@@ -549,7 +642,7 @@ window.renderTable = function () {
 
   const tbody = document.getElementById('roster-body');
   const empty = document.getElementById('empty-state');
-  const colSpan = isAdmin ? 6 : 5;
+  const colSpan = isAdmin ? 7 : 6;
 
   // Show/hide actions column header
   document.getElementById('actions-th').style.display = isAdmin ? '' : 'none';
@@ -563,6 +656,7 @@ window.renderTable = function () {
       <tr>
         <td><strong>${esc(m.name)}</strong></td>
         <td style="color:var(--text-muted);font-family:monospace">${esc(m.characterId)}</td>
+        <td>${esc(m.class || '—')}</td>
         <td>${m.level ?? '—'}</td>
         <td>${(m.weeklyContribution ?? 0).toLocaleString()}</td>
         <td>${m.attempts ?? '—'}</td>
@@ -576,12 +670,14 @@ window.renderTable = function () {
   }
 
   // sort icons
-  ['name','characterId','level','weeklyContribution','attempts'].forEach(c => {
+  ['name','characterId','class','level','weeklyContribution','attempts'].forEach(c => {
     const icon = document.getElementById('sort-' + c);
     if (icon) icon.textContent = c === sortCol ? (sortDir === 1 ? '↑' : '↓') : '↕';
     const th = document.querySelector(`[onclick="sortBy('${c}')"]`);
     if (th) th.classList.toggle('sorted', c === sortCol);
   });
+
+  if (document.getElementById('class-settings-modal')?.classList.contains('open')) renderClassList();
 };
 
 window.sortBy = function (col) {
@@ -602,7 +698,7 @@ window.openAdd = function () {
   document.getElementById('member-modal-title').textContent = 'Add Member';
   document.getElementById('member-modal-sub').textContent   = 'Fill in the member\'s details.';
   document.getElementById('edit-id').value = '';
-  ['name','characterId','level','weeklyContribution','attempts'].forEach(f =>
+  ['name','characterId','class','level','weeklyContribution','attempts'].forEach(f =>
     document.getElementById('f-' + f).value = ''
   );
   openModal('member-modal');
@@ -616,6 +712,16 @@ window.openEdit = function (id) {
   document.getElementById('edit-id').value                  = id;
   document.getElementById('f-name').value                   = m.name || '';
   document.getElementById('f-characterId').value            = m.characterId || '';
+  const classSelect = document.getElementById('f-class');
+  populateClassDropdown();
+  const memberClass = m.class || '';
+  if (memberClass && !classList.includes(memberClass)) {
+    const opt = document.createElement('option');
+    opt.value = memberClass;
+    opt.textContent = `${memberClass} (unlisted)`;
+    classSelect.appendChild(opt);
+  }
+  classSelect.value = memberClass;
   document.getElementById('f-level').value                  = m.level ?? '';
   document.getElementById('f-weeklyContribution').value     = m.weeklyContribution ?? '';
   document.getElementById('f-attempts').value               = m.attempts ?? '';
@@ -630,6 +736,7 @@ window.saveMember = async function () {
   const data = {
     name,
     characterId,
+    class:               document.getElementById('f-class').value.trim(),
     level:               parseInt(document.getElementById('f-level').value) || 0,
     weeklyContribution:  parseInt(document.getElementById('f-weeklyContribution').value) || 0,
     attempts:            parseInt(document.getElementById('f-attempts').value) || 0,
@@ -777,6 +884,95 @@ window.showToast = function (msg, type = 'ok') {
   t.className   = `show toast-${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.className = '', 2800);
+};
+
+// ── CLASS SETTINGS: ADD ──
+window.addClass = async function () {
+  const input = document.getElementById('new-class-input');
+  const errorEl = document.getElementById('class-settings-error');
+  const name = input.value.trim();
+  errorEl.textContent = '';
+  if (!name) { errorEl.textContent = 'Please enter a class name.'; return; }
+  if (classList.some(c => c.toLowerCase() === name.toLowerCase())) {
+    errorEl.textContent = `"${name}" already exists.`; return;
+  }
+  try {
+    await setDoc(doc(db, 'settings', 'classes'), { names: [...classList, name], updatedAt: serverTimestamp() });
+    input.value = '';
+    showToast(`Class "${name}" added.`, 'ok');
+  } catch (e) { errorEl.textContent = 'Failed to add class: ' + e.message; }
+};
+
+document.getElementById('new-class-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.addClass();
+});
+
+// ── CLASS SETTINGS: RENAME ──
+window.startRenameClass = function (idx) {
+  const ul = document.getElementById('class-list');
+  const li = ul.querySelector(`[data-idx="${idx}"]`);
+  if (!li) return;
+  const oldName = classList[idx];
+  document.getElementById('class-settings-error').textContent = '';
+  li.innerHTML = `
+    <input type="text" class="class-name-input" value="${esc(oldName)}" data-old-name="${esc(oldName)}" />
+    <div class="class-actions">
+      <button class="btn btn-primary" style="padding:4px 10px;font-size:0.78rem" onclick="confirmRenameClass(${idx})">Save</button>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem" onclick="renderClassList()">Cancel</button>
+    </div>`;
+  const inp = li.querySelector('.class-name-input');
+  inp.focus(); inp.select();
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.confirmRenameClass(idx);
+    if (e.key === 'Escape') renderClassList();
+  });
+};
+
+window.confirmRenameClass = async function (idx) {
+  const ul = document.getElementById('class-list');
+  const li = ul.querySelector(`[data-idx="${idx}"]`);
+  const input = li?.querySelector('.class-name-input');
+  const errorEl = document.getElementById('class-settings-error');
+  errorEl.textContent = '';
+  if (!input) return;
+  const oldName = input.dataset.oldName;
+  const newName = input.value.trim();
+  if (!newName) { errorEl.textContent = 'Class name cannot be empty.'; return; }
+  if (newName === oldName) { renderClassList(); return; }
+  if (classList.some((c, i) => i !== idx && c.toLowerCase() === newName.toLowerCase())) {
+    errorEl.textContent = `"${newName}" already exists.`; return;
+  }
+  try {
+    const newList = classList.map((c, i) => i === idx ? newName : c);
+    const affected = members.filter(m => m.class === oldName);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'settings', 'classes'), { names: newList, updatedAt: serverTimestamp() });
+    affected.forEach(m => { batch.update(doc(db, 'members', m.id), { class: newName, updatedAt: serverTimestamp() }); });
+    await batch.commit();
+    const msg = affected.length > 0
+      ? `Renamed "${oldName}" → "${newName}" — ${affected.length} member(s) updated.`
+      : `Renamed "${oldName}" → "${newName}".`;
+    showToast(msg, 'ok');
+  } catch (e) { errorEl.textContent = 'Rename failed: ' + e.message; }
+};
+
+// ── CLASS SETTINGS: DELETE ──
+window.deleteClass = async function (idx) {
+  const className = classList[idx];
+  const affected = members.filter(m => m.class === className);
+  const errorEl = document.getElementById('class-settings-error');
+  errorEl.textContent = '';
+  let msg = `Delete class "${className}"?`;
+  if (affected.length > 0) msg += `\n\n${affected.length} member(s) currently have this class. Their class will be cleared.`;
+  if (!confirm(msg)) return;
+  try {
+    const newList = classList.filter((_, i) => i !== idx);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'settings', 'classes'), { names: newList, updatedAt: serverTimestamp() });
+    affected.forEach(m => { batch.update(doc(db, 'members', m.id), { class: '', updatedAt: serverTimestamp() }); });
+    await batch.commit();
+    showToast(affected.length > 0 ? `Deleted "${className}" — ${affected.length} member(s) cleared.` : `Deleted "${className}".`, 'ok');
+  } catch (e) { errorEl.textContent = 'Delete failed: ' + e.message; }
 };
 
 // ── CLAUDE WORKFLOW: TOGGLE ──
