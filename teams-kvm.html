@@ -407,6 +407,15 @@ let savedTeams = null;
 let dragMemberId = null;
 let dragSource   = null; // 'bench' | { team, party }
 
+let dirty        = false;
+
+// Warn on unsaved changes
+window.addEventListener('beforeunload', e => {
+  if (dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+function markDirty() { dirty = true; }
+
 // ── HELPERS ──
 function getAllMemberIds(team) { return team.parties.flat(); }
 function getTeamSize(team) { return team.parties.flat().length; }
@@ -545,6 +554,7 @@ window.addTeam = function () {
   if (!isAdmin) return;
   const num = teams.length + 1;
   teams.push({ name: `Team ${num}`, parties: [[]], leadId: null });
+  markDirty();
   renderAll();
 };
 
@@ -552,6 +562,7 @@ window.setLead = function (teamIdx, memberId) {
   if (!isAdmin) return;
   const team = teams[teamIdx];
   team.leadId = (team.leadId === memberId) ? null : memberId;
+  markDirty();
   renderAll();
 };
 
@@ -568,6 +579,7 @@ window.confirmDeleteTeam = function () {
   teams.splice(deleteTeamIdx, 1);
   deleteTeamIdx = null;
   closeModal('delete-team-modal');
+  markDirty();
   renderAll();
 };
 
@@ -648,6 +660,7 @@ function onDropParty(e, teamIdx, partyIdx, insertIdx) {
 
   dragMemberId = null;
   dragSource = null;
+  markDirty();
   renderAll();
 }
 
@@ -678,6 +691,7 @@ function onDropTeam(e, teamIdx) {
 
   dragMemberId = null;
   dragSource = null;
+  markDirty();
   renderAll();
 }
 
@@ -693,6 +707,7 @@ function onDropBench(e) {
 
   dragMemberId = null;
   dragSource = null;
+  markDirty();
   renderAll();
 }
 
@@ -722,6 +737,7 @@ function clickAssign(memberId) {
 
   benchIds = benchIds.filter(id => id !== memberId);
   teams[bestTeam].parties[bestParty].push(memberId);
+  markDirty();
   renderAll();
 }
 
@@ -736,6 +752,7 @@ window.removeFromTeam = function (teamIdx, partyIdx, memberId) {
     team.leadId = allIds.length > 0 ? allIds[0] : null;
   }
   benchIds.push(memberId);
+  markDirty();
   renderAll();
 };
 
@@ -937,6 +954,7 @@ function renderTeams() {
 
         dragMemberId = null;
         dragSource = null;
+        markDirty();
         renderAll();
       });
     });
@@ -945,6 +963,7 @@ function renderTeams() {
 
 window.renameTeam = function (idx, newName) {
   teams[idx].name = newName.trim() || `Team ${idx + 1}`;
+  markDirty();
 };
 
 function getSearchVal() {
@@ -981,6 +1000,7 @@ window.saveTeams = async function () {
         leadId: t.leadId || null,
       })),
     });
+    dirty = false;
     showToast('Teams saved!', 'ok');
   } catch (e) {
     showToast('Failed to save: ' + e.message, 'err');
