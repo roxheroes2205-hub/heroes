@@ -4,20 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>HEROES — AA Teams</title>
+<link rel="stylesheet" href="theme.css" />
+<script src="theme-toggle.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3348;
-    --accent: #5b7fff;
-    --accent-hover: #4a6eff;
-    --danger: #e05252;
-    --text: #e8eaf0;
-    --text-muted: #7a7f9a;
-    --success: #3ecf8e;
-  }
+  /* Theme variables defined in theme.css */
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
   .form-group { margin-bottom: 16px; }
@@ -144,9 +135,9 @@
   }
   .member-chip:hover { background: var(--surface2); }
   .member-chip.dragging { opacity: 0.3; }
-  .member-chip .chip-name { font-size: 0.88rem; flex: 1; }
+  .member-chip .chip-name { font-size: 0.95rem; flex: 1; }
   .member-chip .chip-class {
-    font-size: 0.72rem; color: var(--text-muted);
+    font-size: 0.82rem; color: var(--text-muted);
   }
 
   /* ── TEAMS GRID ── */
@@ -208,8 +199,8 @@
     cursor: grab; opacity: 0.4; transition: opacity .15s;
   }
   .team-member:hover .tm-grip { opacity: 1; color: var(--text-muted); }
-  .team-member .tm-name { font-size: 0.88rem; flex: 1; }
-  .team-member .tm-class { font-size: 0.72rem; color: var(--text-muted); }
+  .team-member .tm-name { font-size: 0.95rem; flex: 1; }
+  .team-member .tm-class { font-size: 0.82rem; color: var(--text-muted); }
   .team-member .tm-remove {
     background: none; border: none; color: var(--text-muted); cursor: pointer;
     font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1;
@@ -253,8 +244,8 @@
     overflow: hidden;
   }
   .party-group-header {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--text-muted); padding: 4px 12px; background: var(--surface2);
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); padding: 5px 12px; background: var(--surface2);
     border-bottom: 1px solid var(--border);
   }
   .party-group-empty { opacity: 0.5; }
@@ -287,6 +278,7 @@
     <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"><span class="icon-sun">&#9788;</span><span class="icon-moon">&#9790;</span></button>
       <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
       <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
     </div>

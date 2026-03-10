@@ -4,21 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>HEROES — Members</title>
+<link rel="stylesheet" href="theme.css" />
+<script src="theme-toggle.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3348;
-    --accent: #5b7fff;
-    --accent-hover: #4a6eff;
-    --danger: #e05252;
-    --danger-hover: #c94444;
-    --text: #e8eaf0;
-    --text-muted: #7a7f9a;
-    --success: #3ecf8e;
-  }
+  /* Theme variables defined in theme.css */
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
   .form-group { margin-bottom: 16px; }
@@ -171,8 +161,8 @@
   .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
   .status-dot.matched { background: var(--success); }
   .status-dot.unmatched { background: var(--danger); }
-  .status-dot.uncertain { background: #f0ad4e; }
-  .uncertain-note { font-size: 0.78rem; color: #f0ad4e; margin-top: 2px; }
+  .status-dot.uncertain { background: var(--warning); }
+  .uncertain-note { font-size: 0.78rem; color: var(--warning); margin-top: 2px; }
 
   .search-select { position: relative; display: inline-block; }
   .search-select input {
@@ -252,6 +242,7 @@
     <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"><span class="icon-sun">&#9788;</span><span class="icon-moon">&#9790;</span></button>
       <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
       <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
     </div>

@@ -4,20 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>HEROES — Distribution</title>
+<link rel="stylesheet" href="theme.css" />
+<script src="theme-toggle.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3348;
-    --accent: #5b7fff;
-    --accent-hover: #4a6eff;
-    --danger: #e05252;
-    --text: #e8eaf0;
-    --text-muted: #7a7f9a;
-    --success: #3ecf8e;
-  }
+  /* Theme variables defined in theme.css */
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
   .form-group { margin-bottom: 16px; }
@@ -159,7 +150,7 @@
   .event-pill.type-KVM  { background: var(--accent); color: #fff; }
   .event-pill.type-xKVM { background: #7c5bff; color: #fff; }
   .event-pill.type-AA   { background: var(--success); color: #000; }
-  .event-pill.type-GvG  { background: #f0ad4e; color: #000; }
+  .event-pill.type-GvG  { background: var(--warning); color: #000; }
   .event-pill.type-xGvG { background: var(--danger); color: #fff; }
 
   /* ── RANK SELECTORS ── */
@@ -172,7 +163,7 @@
     text-transform: uppercase; letter-spacing: .04em;
   }
   .rank-hint {
-    font-size: 0.82rem; color: #f0ad4e; margin-bottom: 14px; padding: 10px 14px;
+    font-size: 0.82rem; color: var(--warning); margin-bottom: 14px; padding: 10px 14px;
     background: rgba(240, 173, 78, 0.08); border: 1px solid rgba(240, 173, 78, 0.2);
     border-radius: 7px; line-height: 1.5;
   }
@@ -232,7 +223,7 @@
     font-size: 0.75rem; font-weight: 600; white-space: nowrap;
   }
   .badge-eligible { background: rgba(62, 207, 142, 0.15); color: var(--success); }
-  .badge-one-box  { background: rgba(240, 173, 78, 0.15); color: #f0ad4e; }
+  .badge-one-box  { background: rgba(240, 173, 78, 0.15); color: var(--warning); }
   .badge-no-boxes { background: rgba(224, 82, 82, 0.15); color: var(--danger); }
   .badge-no-attempts { background: rgba(122, 127, 154, 0.15); color: var(--text-muted); }
 
@@ -260,6 +251,7 @@
     <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"><span class="icon-sun">&#9788;</span><span class="icon-moon">&#9790;</span></button>
       <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
       <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
     </div>

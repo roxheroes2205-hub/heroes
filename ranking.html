@@ -4,20 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>HEROES — Ranking</title>
+<link rel="stylesheet" href="theme.css" />
+<script src="theme-toggle.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3348;
-    --accent: #5b7fff;
-    --accent-hover: #4a6eff;
-    --danger: #e05252;
-    --text: #e8eaf0;
-    --text-muted: #7a7f9a;
-    --success: #3ecf8e;
-  }
+  /* Theme variables defined in theme.css */
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
   .form-group { margin-bottom: 16px; }
@@ -207,7 +198,7 @@
   .event-pill.type-KVM  { background: var(--accent); color: #fff; }
   .event-pill.type-xKVM { background: #7c5bff; color: #fff; }
   .event-pill.type-AA   { background: var(--success); color: #000; }
-  .event-pill.type-GvG  { background: #f0ad4e; color: #000; }
+  .event-pill.type-GvG  { background: var(--warning); color: #000; }
   .event-pill.type-xGvG { background: var(--danger); color: #fff; }
 
   /* ── SETTINGS MODAL ── */
@@ -241,7 +232,7 @@
     display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem;
     font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
   }
-  .tier-badge.legend { background: #f0ad4e; color: #000; }
+  .tier-badge.legend { background: var(--warning); color: #000; }
   .tier-badge.elite  { background: #7c5bff; color: #fff; }
   .tier-badge.rising { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
 
@@ -277,6 +268,7 @@
     <div class="logo">HEROES</div>
     <div class="user-area">
       <span class="user-email" id="user-email-display"></span>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"><span class="icon-sun">&#9788;</span><span class="icon-moon">&#9790;</span></button>
       <button class="btn btn-ghost" id="admin-login-btn" onclick="openModal('login-modal')">Admin Sign In</button>
       <button class="btn btn-ghost" id="logout-btn" onclick="doLogout()" style="display:none">Sign Out</button>
     </div>

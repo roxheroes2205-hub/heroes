@@ -1,0 +1,97 @@
+/* ── THEME VARIABLES ── */
+
+/* Dark mode (default) – improved readability */
+:root {
+  --bg: #131620;
+  --surface: #1c2030;
+  --surface2: #252a3a;
+  --border: #353b50;
+  --accent: #6b8aff;
+  --accent-hover: #5a79ff;
+  --danger: #e05252;
+  --danger-hover: #c94444;
+  --text: #e8eaf0;
+  --text-muted: #9096b0;
+  --success: #3ecf8e;
+  --warning: #f0ad4e;
+  color-scheme: dark;
+}
+
+/* Light mode */
+[data-theme="light"] {
+  --bg: #f0f2f8;
+  --surface: #ffffff;
+  --surface2: #e8ebf2;
+  --border: #d0d4e0;
+  --accent: #4a6cf7;
+  --accent-hover: #3a5ae0;
+  --danger: #d44040;
+  --danger-hover: #b83535;
+  --text: #1a1e2e;
+  --text-muted: #5d6280;
+  --success: #2bb578;
+  --warning: #d49520;
+  color-scheme: light;
+}
+
+/* ── THEME TOGGLE BUTTON ── */
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: background .15s, color .15s, border-color .15s;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Show sun in dark mode, moon in light mode */
+.theme-toggle .icon-sun  { display: inline; }
+.theme-toggle .icon-moon { display: none; }
+[data-theme="light"] .theme-toggle .icon-sun  { display: none; }
+[data-theme="light"] .theme-toggle .icon-moon { display: inline; }
+
+/* ── LIGHT MODE OVERRIDES ── */
+/* Tier badge adjustments for light mode */
+[data-theme="light"] .tier-badge.legend { background: #e89b20; color: #fff; }
+[data-theme="light"] .tier-badge.elite  { background: #6548d9; color: #fff; }
+[data-theme="light"] .tier-badge.rising { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Modal backdrop darker in light mode for contrast */
+[data-theme="light"] .modal-backdrop.open { background: rgba(0,0,0,.35); }
+
+/* Toast needs slight shadow in light mode */
+[data-theme="light"] #toast { box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+
+/* Table row hover */
+[data-theme="light"] tbody tr:hover { background: var(--surface2); }
+
+/* Select option backgrounds for light mode */
+[data-theme="light"] .form-group select option { background: var(--surface); }
+
+/* Stat card top border colors for light mode */
+[data-theme="light"] .stat-card.type-kvm { border-top-color: var(--accent); }
+[data-theme="light"] .stat-card.type-aa  { border-top-color: var(--success); }
+[data-theme="light"] .stat-card.type-gvg { border-top-color: var(--warning); }
+
+/* Ensure inputs/selects in light mode look correct */
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group select,
+[data-theme="light"] .form-group textarea,
+[data-theme="light"] .results-search {
+  background: var(--surface);
+  border-color: var(--border);
+}
