@@ -262,9 +262,9 @@
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
     <a href="ranking.html">Ranking</a>
-    <a href="teams-gvg.html">GvG Teams</a>
-    <a href="teams-aa.html">AA Teams</a>
-    <a href="teams-kvm.html">KvM Teams</a>
+    <a href="teams-gvg.html" class="admin-only" style="display:none">GvG Teams</a>
+    <a href="teams-aa.html" class="admin-only" style="display:none">AA Teams</a>
+    <a href="teams-kvm.html" class="admin-only" style="display:none">KvM Teams</a>
   </nav>
 
   <main>
@@ -523,6 +523,7 @@ onAuthStateChanged(auth, user => {
     document.getElementById('logout-btn').style.display = '';
     document.getElementById('admin-toolbar').style.display = '';
     document.getElementById('empty-hint').textContent = 'Import a list or add members manually';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
     closeModal('login-modal');
   } else {
     isAdmin = false;
@@ -531,6 +532,7 @@ onAuthStateChanged(auth, user => {
     document.getElementById('logout-btn').style.display = 'none';
     document.getElementById('admin-toolbar').style.display = 'none';
     document.getElementById('empty-hint').textContent = 'No roster data available yet';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
   }
   renderTable();
 });

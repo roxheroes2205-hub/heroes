@@ -297,9 +297,9 @@
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
     <a href="ranking.html">Ranking</a>
-    <a href="teams-gvg.html">GvG Teams</a>
-    <a href="teams-aa.html" class="active">AA Teams</a>
-    <a href="teams-kvm.html">KvM Teams</a>
+    <a href="teams-gvg.html" class="admin-only" style="display:none">GvG Teams</a>
+    <a href="teams-aa.html" class="active admin-only" style="display:none">AA Teams</a>
+    <a href="teams-kvm.html" class="admin-only" style="display:none">KvM Teams</a>
   </nav>
 
   <main>
@@ -466,6 +466,8 @@ onAuthStateChanged(auth, user => {
     document.getElementById('admin-login-btn').style.display = '';
     document.getElementById('logout-btn').style.display = 'none';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    window.location.href = 'index.html';
+    return;
   }
   // Re-render to apply admin/view-only state to all interactive elements
   if (teamsLoaded) renderAll();

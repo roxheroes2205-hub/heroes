@@ -265,9 +265,9 @@
     <a href="events.html">Events</a>
     <a href="distribution.html">Distribution</a>
     <a href="ranking.html">Ranking</a>
-    <a href="teams-gvg.html">GvG Teams</a>
-    <a href="teams-aa.html">AA Teams</a>
-    <a href="teams-kvm.html">KvM Teams</a>
+    <a href="teams-gvg.html" class="admin-only" style="display:none">GvG Teams</a>
+    <a href="teams-aa.html" class="admin-only" style="display:none">AA Teams</a>
+    <a href="teams-kvm.html" class="admin-only" style="display:none">KvM Teams</a>
   </nav>
 
   <main>
@@ -446,12 +446,14 @@ onAuthStateChanged(auth, user => {
     document.getElementById('user-email-display').textContent = user.email;
     document.getElementById('admin-login-btn').style.display = 'none';
     document.getElementById('logout-btn').style.display = '';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
     closeModal('login-modal');
   } else {
     isAdmin = false;
     document.getElementById('user-email-display').textContent = '';
     document.getElementById('admin-login-btn').style.display = '';
     document.getElementById('logout-btn').style.display = 'none';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
   }
 });
 
