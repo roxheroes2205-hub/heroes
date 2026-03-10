@@ -272,6 +272,13 @@
   .team-member.view-only { cursor: default; }
   .team-title[readonly] { cursor: default; pointer-events: none; }
 
+  /* ── SEARCH HIGHLIGHT ── */
+  .team-member.search-highlight {
+    background: rgba(91,127,255,0.12);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .team-member.search-highlight .tm-name { color: var(--accent); }
+
 </style>
 </head>
 <body>
@@ -312,7 +319,7 @@
           <span id="bench-count">0</span>
         </div>
         <div class="bench-search">
-          <input type="text" placeholder="Search members..." id="bench-search-input" oninput="renderBench()" />
+          <input type="text" placeholder="Search members..." id="bench-search-input" />
         </div>
         <div class="bench-list" id="bench-list"></div>
       </div>
@@ -739,7 +746,7 @@ window.removeFromTeam = function (teamIdx, partyIdx, memberId) {
 // ── RENDER ──
 function renderBench() {
   const list = document.getElementById('bench-list');
-  const searchVal = document.getElementById('bench-search-input').value.toLowerCase();
+  const searchVal = getSearchVal();
 
   const filtered = benchIds
     .map(id => members.find(m => m.id === id))
@@ -774,6 +781,7 @@ function renderBench() {
 
 function renderTeams() {
   const area = document.getElementById('teams-area');
+  const searchVal = getSearchVal();
 
   if (teams.length === 0) {
     area.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:0.9rem;font-style:italic;">
@@ -810,6 +818,7 @@ function renderTeams() {
 
       const memberRows = partyMembers.map(m => {
         const isLead = m.id === team.leadId;
+        const isHighlighted = searchVal && (m.name.toLowerCase().includes(searchVal) || (m.class || '').toLowerCase().includes(searchVal));
         const crownHtml = isLead
           ? (isAdmin
             ? `<span class="tm-crown" onclick="setLead(${idx},'${esc(m.id)}')" title="Remove PT Lead">&#x1F451;</span>`
@@ -817,7 +826,7 @@ function renderTeams() {
           : (isAdmin
             ? `<span class="tm-crown-empty admin-only" onclick="setLead(${idx},'${esc(m.id)}')" title="Set as PT Lead">&#x1F451;</span>`
             : '');
-        return `<div class="team-member${isLead ? ' is-lead' : ''}${isAdmin ? '' : ' view-only'}" ${isAdmin ? 'draggable="true"' : ''} data-id="${esc(m.id)}" data-team="${idx}" data-party="${pi}">
+        return `<div class="team-member${isLead ? ' is-lead' : ''}${isAdmin ? '' : ' view-only'}${isHighlighted ? ' search-highlight' : ''}" ${isAdmin ? 'draggable="true"' : ''} data-id="${esc(m.id)}" data-team="${idx}" data-party="${pi}">
             ${isAdmin ? '<span class="tm-grip">&#8942;</span>' : ''}
             ${crownHtml}
             <span class="tm-name">${esc(m.name)}</span>
@@ -942,10 +951,17 @@ window.renameTeam = function (idx, newName) {
   teams[idx].name = newName.trim() || `Team ${idx + 1}`;
 };
 
+function getSearchVal() {
+  return document.getElementById('bench-search-input').value.toLowerCase();
+}
+
 function renderAll() {
   renderBench();
   renderTeams();
 }
+
+// Search triggers full re-render so team highlights update too
+document.getElementById('bench-search-input').addEventListener('input', renderAll);
 
 // Bench drop target — guarded by isAdmin check
 const benchPanel = document.querySelector('.bench-panel');
