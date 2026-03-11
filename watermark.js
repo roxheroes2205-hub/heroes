@@ -20,9 +20,9 @@ export function applyWatermark(discordUser) {
   overlay.style.cssText =
     'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden;user-select:none;';
 
-  // Sparse grid — larger text, fewer repetitions, easier to read when revealed
-  const rows = 12;
-  const cols = 4;
+  // Very sparse grid — large text, wide spacing, easy to read when revealed
+  const rows = 6;
+  const cols = 2;
   const fragment = document.createDocumentFragment();
 
   for (let r = 0; r < rows; r++) {
