@@ -13,8 +13,8 @@ const EXPIRY_KEY     = 'discord_token_expiry';
 const USER_KEY       = 'discord_user';
 const VERIFIED_KEY   = 'discord_last_verified';
 
-// Only re-verify via Discord API every 5 minutes to avoid rate limits
-const VERIFY_INTERVAL_MS = 5 * 60 * 1000;
+// Only verify once per session — skip API re-checks until token expires or user logs out
+const VERIFY_INTERVAL_MS = Infinity;
 
 /**
  * Returns stored session if token exists and hasn't expired, or null.
