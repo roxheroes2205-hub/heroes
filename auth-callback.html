@@ -104,6 +104,9 @@ import {
       return;
     }
 
+    // Mark as just verified so the target page skips re-verification
+    localStorage.setItem('discord_last_verified', Date.now().toString());
+
     // Success — redirect to original page
     // Clear the hash to avoid token leaking in browser history
     window.location.replace(returnPath);

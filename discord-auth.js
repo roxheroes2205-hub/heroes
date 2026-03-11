@@ -8,9 +8,13 @@ const DISCORD_API_BASE  = 'https://discord.com/api/v10';
 const SCOPES            = 'identify guilds.members.read';
 
 // localStorage keys
-const TOKEN_KEY  = 'discord_access_token';
-const EXPIRY_KEY = 'discord_token_expiry';
-const USER_KEY   = 'discord_user';
+const TOKEN_KEY      = 'discord_access_token';
+const EXPIRY_KEY     = 'discord_token_expiry';
+const USER_KEY       = 'discord_user';
+const VERIFIED_KEY   = 'discord_last_verified';
+
+// Only re-verify via Discord API every 5 minutes to avoid rate limits
+const VERIFY_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Returns stored session if token exists and hasn't expired, or null.
@@ -43,6 +47,7 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EXPIRY_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(VERIFIED_KEY);
 }
 
 /**
@@ -84,6 +89,7 @@ export async function fetchUser(token) {
   const resp = await fetch(`${DISCORD_API_BASE}/users/@me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (resp.status === 429) throw new Error('rate_limited');
   if (!resp.ok) return null;
   return resp.json();
 }
@@ -96,6 +102,7 @@ export async function fetchGuildMember(token) {
     `${DISCORD_API_BASE}/users/@me/guilds/${DISCORD_GUILD_ID}/member`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
+  if (resp.status === 429) throw new Error('rate_limited');
   if (!resp.ok) return null;
   return resp.json();
 }
@@ -121,11 +128,18 @@ export function getAvatarUrl(user, size = 32) {
 
 /**
  * Main gate function: validates stored token, checks guild membership + role.
- * Returns { user, member } on success or null on failure.
+ * Returns { user, member } on success, null on definitive failure,
+ * or 'skip' if recently verified (to avoid Discord API rate limits).
  */
 export async function checkDiscordAccess() {
   const session = getStoredSession();
   if (!session) return null;
+
+  // Skip API calls if verified recently (avoids 429 rate limits)
+  const lastVerified = parseInt(localStorage.getItem(VERIFIED_KEY), 10);
+  if (lastVerified && (Date.now() - lastVerified) < VERIFY_INTERVAL_MS) {
+    return 'skip';
+  }
 
   const user = await fetchUser(session.token);
   if (!user) {
@@ -147,5 +161,7 @@ export async function checkDiscordAccess() {
     return null;
   }
 
+  // Mark as verified
+  localStorage.setItem(VERIFIED_KEY, Date.now().toString());
   return { user, member };
 }
