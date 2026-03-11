@@ -553,7 +553,7 @@ const CURRENT_PAGE = window.location.pathname.split('/').pop() || 'index.html';
   gate.classList.add('authenticated');
   if (session.user) {
     showDiscordUser(session.user);
-    applyWatermark(session.user.id);
+    applyWatermark(session.user);
   }
 
   // Verify in background — only re-show gate if verification fails
