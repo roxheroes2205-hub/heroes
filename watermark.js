@@ -37,7 +37,7 @@ export function applyWatermark(discordUser) {
         'font-size:18px;' +
         'font-family:monospace;' +
         'color:var(--text);' +
-        'opacity:0.018;' +
+        'opacity:var(--watermark-opacity, 0.018);' +
         'white-space:nowrap;' +
         'letter-spacing:3px;';
       fragment.appendChild(span);

@@ -14,6 +14,7 @@
   --text-muted: #9096b0;
   --success: #3ecf8e;
   --warning: #f0ad4e;
+  --watermark-opacity: 0.012;
   color-scheme: dark;
 }
 
@@ -31,6 +32,7 @@
   --text-muted: #5d6280;
   --success: #2bb578;
   --warning: #d49520;
+  --watermark-opacity: 0.018;
   color-scheme: light;
 }
 
