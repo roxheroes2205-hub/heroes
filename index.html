@@ -443,27 +443,25 @@ const CURRENT_PAGE = window.location.pathname.split('/').pop() || 'index.html';
   const session = getStoredSession();
   if (!session) return;
 
+  // Immediately hide gate using stored session (no flash)
+  gate.classList.add('authenticated');
+  if (session.user) {
+    showDiscordUser(session.user);
+    applyWatermark(session.user.id);
+  }
+
+  // Verify in background — only re-show gate if verification fails
   try {
     const result = await checkDiscordAccess();
-    if (result) {
-      gate.classList.add('authenticated');
-      showDiscordUser(result.user);
-      applyWatermark(result.user.id);
-    } else {
+    if (!result) {
+      gate.classList.remove('authenticated');
       errorEl.textContent = 'Your session has expired or you no longer have access. Please sign in again.';
       errorEl.style.display = '';
+    } else if (result.user) {
+      showDiscordUser(result.user);
     }
   } catch (err) {
-    if (session && session.token) {
-      gate.classList.add('authenticated');
-      if (session.user) {
-        showDiscordUser(session.user);
-        applyWatermark(session.user.id);
-      }
-    } else {
-      errorEl.textContent = 'Could not reach Discord. Please check your connection and try again.';
-      errorEl.style.display = '';
-    }
+    // Network error — keep gate hidden (optimistic, session still valid locally)
   }
 })();
 
