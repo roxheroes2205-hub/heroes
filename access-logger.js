@@ -26,7 +26,8 @@ export function logPageAccess(db, addDocFn, collectionFn, TimestampClass, discor
   try {
     addDocFn(collectionFn(db, 'accessLogs'), {
       discordUserId: discordUser.id,
-      discordUsername: discordUser.global_name || discordUser.username,
+      discordUsername: discordUser.username,
+      discordDisplayName: discordUser.global_name || discordUser.username,
       page: pagePath,
       timestamp: TimestampClass.now(),
       userAgent: navigator.userAgent,
