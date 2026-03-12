@@ -290,6 +290,10 @@
     </p>
   </div>
 </div>
+<script>
+if (localStorage.getItem('discord_access_token') && parseInt(localStorage.getItem('discord_token_expiry'),10) > Date.now())
+  document.getElementById('discord-gate').classList.add('authenticated');
+</script>
 
 <!-- ── APP ── -->
 <div id="app-screen">
@@ -621,6 +625,7 @@ let sortDir        = 1;
 let pendingImport  = [];
 let deleteTargetId = null;
 let unsubscribe    = null;
+let unsubClasses   = null;
 let isAdmin        = false;
 let stagingRows    = [];
 let classList      = [];
@@ -662,7 +667,7 @@ function startListener() {
 startListener();
 
 // ── CLASS LIST LISTENER ──
-onSnapshot(doc(db, 'settings', 'classes'), snap => {
+unsubClasses = onSnapshot(doc(db, 'settings', 'classes'), snap => {
   classList = snap.exists() ? (snap.data().names || []) : [];
   classList.sort((a, b) => a.localeCompare(b));
   populateClassDropdown();
@@ -1516,6 +1521,11 @@ window.confirmMemberOverwrite = async function () {
     btn.textContent = 'Save Updates';
   }
 };
+
+window.addEventListener('pagehide', () => {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  if (unsubClasses) { unsubClasses(); unsubClasses = null; }
+});
 </script>
 </body>
 </html>

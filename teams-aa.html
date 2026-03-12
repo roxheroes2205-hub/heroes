@@ -327,6 +327,10 @@
     </p>
   </div>
 </div>
+<script>
+if (localStorage.getItem('discord_access_token') && parseInt(localStorage.getItem('discord_token_expiry'),10) > Date.now())
+  document.getElementById('discord-gate').classList.add('authenticated');
+</script>
 <div id="app-screen">
   <header>
     <div class="logo">HEROES</div>
@@ -507,6 +511,8 @@ let members      = [];
 let isAdmin      = false;
 let deleteTeamIdx = null;
 let teamsLoaded  = false;
+let unsubMembers = null;
+let unsubTeams   = null;
 
 // Team builder state
 // Each team: { name, parties: [[], [], []], leadId }
@@ -631,7 +637,7 @@ function parseTeamData(t) {
 
 function startListeners() {
   const mq = query(collection(db, 'members'), orderBy('name'));
-  onSnapshot(mq, snap => {
+  unsubMembers = onSnapshot(mq, snap => {
     members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (savedTeams && !teamsLoaded) {
       teams = savedTeams.map(t => parseTeamData(t));
@@ -643,7 +649,7 @@ function startListeners() {
   });
 
   // Load the single AA composition
-  onSnapshot(doc(db, 'teamCompositions', 'aa'), snap => {
+  unsubTeams = onSnapshot(doc(db, 'teamCompositions', 'aa'), snap => {
     if (snap.exists() && !teamsLoaded) {
       const data = snap.data();
       if (members.length > 0) {
@@ -1309,6 +1315,11 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.fill();
   ctx.stroke();
 }
+
+window.addEventListener('pagehide', () => {
+  if (unsubMembers) { unsubMembers(); unsubMembers = null; }
+  if (unsubTeams) { unsubTeams(); unsubTeams = null; }
+});
 </script>
 </body>
 </html>

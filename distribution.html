@@ -300,6 +300,10 @@
     </p>
   </div>
 </div>
+<script>
+if (localStorage.getItem('discord_access_token') && parseInt(localStorage.getItem('discord_token_expiry'),10) > Date.now())
+  document.getElementById('discord-gate').classList.add('authenticated');
+</script>
 
 <div id="app-screen">
   <header>
@@ -478,7 +482,7 @@ window.discordLogout = function () {
 import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword,
          signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
-import { getFirestore, collection, onSnapshot,
+import { getFirestore, collection,
          getDocs, query, orderBy, where,
          addDoc, Timestamp }                        from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 import { logPageAccess } from './access-logger.js';
@@ -508,8 +512,6 @@ const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 // ── STATE ──
 let members       = [];
 let events        = [];
-let unsubMembers  = null;
-let unsubEvents   = null;
 
 let calendarYear, calendarMonth;
 {
@@ -644,25 +646,22 @@ function getEventDate(ev) {
   return ev.date?.toDate ? ev.date.toDate() : new Date(ev.date);
 }
 
-// ── FIRESTORE LISTENERS ──
-function startListeners() {
-  if (unsubMembers) return;
-
-  const mq = query(collection(db, 'members'), orderBy('name'));
-  unsubMembers = onSnapshot(mq, snap => {
-    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (weekAAEvents.length > 0) calculateDistribution();
-  }, err => showToast('Failed to load members: ' + err.message, 'err'));
-
-  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
-  unsubEvents = onSnapshot(eq, snap => {
-    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+// ── LOAD DATA (one-time fetch) ──
+async function loadData() {
+  try {
+    const [mSnap, eSnap] = await Promise.all([
+      getDocs(query(collection(db, 'members'), orderBy('name'))),
+      getDocs(query(collection(db, 'events'), orderBy('date', 'desc')))
+    ]);
+    members = mSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    events = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderCalendar();
-    // If a week is already selected, refresh AA events in it
     if (selectedWeek) onWeekSelected();
-  }, err => showToast('Failed to load events: ' + err.message, 'err'));
+  } catch (err) {
+    showToast('Failed to load data: ' + err.message, 'err');
+  }
 }
-startListeners();
+loadData();
 
 // ── CALENDAR ──
 function renderCalendar() {

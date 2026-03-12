@@ -317,6 +317,10 @@
     </p>
   </div>
 </div>
+<script>
+if (localStorage.getItem('discord_access_token') && parseInt(localStorage.getItem('discord_token_expiry'),10) > Date.now())
+  document.getElementById('discord-gate').classList.add('authenticated');
+</script>
 
 <div id="app-screen">
   <header>
@@ -1461,6 +1465,13 @@ async function executeSave() {
 
   btn.disabled = false;
 }
+
+window.addEventListener('pagehide', () => {
+  if (unsubMembers) { unsubMembers(); unsubMembers = null; }
+  if (unsubEvents) { unsubEvents(); unsubEvents = null; }
+  if (unsubMonthly) { unsubMonthly(); unsubMonthly = null; }
+  if (unsubWeekly) { unsubWeekly(); unsubWeekly = null; }
+});
 
 </script>
 </body>

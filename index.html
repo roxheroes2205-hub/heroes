@@ -295,6 +295,11 @@
     </p>
   </div>
 </div>
+<script>
+// Synchronously hide gate if session exists (prevents login flash)
+if (localStorage.getItem('discord_access_token') && parseInt(localStorage.getItem('discord_token_expiry'),10) > Date.now())
+  document.getElementById('discord-gate').classList.add('authenticated');
+</script>
 
 <div id="app-screen">
   <header>
@@ -483,7 +488,7 @@ window.discordLogout = function () {
 import { initializeApp }                            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword,
          signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
-import { getFirestore, collection, onSnapshot, getDoc,
+import { getFirestore, collection, getDoc,
          getDocs, doc, query, orderBy, where,
          Timestamp, addDoc }                          from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 import { logPageAccess }                             from './access-logger.js';
@@ -515,9 +520,6 @@ let members        = [];
 let events         = [];
 let config         = null;
 let isAdmin        = false;
-let unsubMembers   = null;
-let unsubEvents    = null;
-let unsubMonthlyHP = null;
 
 let calendarYear, calendarMonth;
 {
@@ -658,22 +660,19 @@ async function loadConfig() {
   }
 }
 
-// ── FIRESTORE LISTENERS ──
-function startListeners() {
-  if (unsubMembers) return;
-
-  const mq = query(collection(db, 'members'), orderBy('name'));
-  unsubMembers = onSnapshot(mq, snap => {
-    members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    // Refresh stats when members change (affects participation denominator)
+// ── LOAD DATA (one-time fetch) ──
+async function loadData() {
+  try {
+    const [mSnap, eSnap] = await Promise.all([
+      getDocs(query(collection(db, 'members'), orderBy('name'))),
+      getDocs(query(collection(db, 'events'), orderBy('date', 'desc')))
+    ]);
+    members = mSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    events = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     loadSummaryStats();
-  }, err => showToast('Failed to load members: ' + err.message, 'err'));
-
-  const eq = query(collection(db, 'events'), orderBy('date', 'desc'));
-  unsubEvents = onSnapshot(eq, snap => {
-    events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    loadSummaryStats();
-  }, err => showToast('Failed to load events: ' + err.message, 'err'));
+  } catch (err) {
+    showToast('Failed to load data: ' + err.message, 'err');
+  }
 }
 
 // ── SUMMARY STATS ──
@@ -773,9 +772,7 @@ async function loadSummaryStats() {
 }
 
 // ── MONTHLY HERO POINTS ──
-function subscribeMonthlyHeroPoints() {
-  if (unsubMonthlyHP) { unsubMonthlyHP(); unsubMonthlyHP = null; }
-
+async function loadMonthlyHeroPoints() {
   document.getElementById('month-label').textContent = `${MONTHS[calendarMonth]} ${calendarYear}`;
 
   const monthStart = new Date(calendarYear, calendarMonth, 1);
@@ -787,21 +784,21 @@ function subscribeMonthlyHeroPoints() {
     where('weekStart', '<=', Timestamp.fromDate(monthEnd))
   );
 
-  unsubMonthlyHP = onSnapshot(wq, snap => {
+  try {
+    const snap = await getDocs(wq);
     monthlyHPData = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-    renderMonthlyTable();
-  }, err => {
+  } catch (err) {
     console.error('Monthly HP query failed:', err.message);
     monthlyHPData = [];
-    renderMonthlyTable();
-  });
+  }
+  renderMonthlyTable();
 }
 
 window.navigateMonth = function (delta) {
   calendarMonth += delta;
   if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
   if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
-  subscribeMonthlyHeroPoints();
+  loadMonthlyHeroPoints();
 };
 
 // ── SORTING ──
@@ -983,8 +980,8 @@ window.renderMonthlyTable = function () {
 
 // ── INIT ──
 loadConfig();
-startListeners();
-subscribeMonthlyHeroPoints();
+loadData();
+loadMonthlyHeroPoints();
 
 </script>
 </body>
