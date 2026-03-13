@@ -363,6 +363,7 @@ if (localStorage.getItem('discord_access_token') && parseInt(localStorage.getIte
       <div style="flex:1"></div>
       <div class="admin-only" style="display:none">
         <button class="btn btn-ghost" id="copy-image-btn" onclick="copyTeamsAsImage()">Copy as Image</button>
+        <button class="btn btn-ghost" id="discord-post-btn" onclick="sendTeamsToDiscord()">Post to Discord</button>
         <button class="btn btn-ghost" onclick="addTeam()">+ New Team</button>
         <button class="btn btn-primary" onclick="saveTeams()">Save Teams</button>
       </div>
@@ -483,8 +484,8 @@ import { initializeApp }                            from 'https://www.gstatic.co
 import { getAuth, signInWithEmailAndPassword,
          signOut, onAuthStateChanged }              from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 import { getFirestore, collection, onSnapshot,
-         setDoc, doc, query, orderBy, getDoc, addDoc,
-         Timestamp }                                  from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+         setDoc, doc, query, orderBy, getDoc, getDocFromServer,
+         addDoc, Timestamp }                          from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 import { logPageAccess } from './access-logger.js';
 
 // ── FIREBASE INIT ──
@@ -524,6 +525,7 @@ let savedTeams = null;
 let dragMemberId = null;
 let dragSource   = null; // 'bench' | { team, party }
 let dirty        = false;
+let webhookUrl   = '';
 
 // Warn on unsaved changes
 window.addEventListener('beforeunload', e => {
@@ -646,6 +648,11 @@ function startListeners() {
     rebuildBench();
     renderAll();
   });
+
+  // Load webhook URL
+  getDocFromServer(doc(db, 'settings', 'webhooks')).then(snap => {
+    if (snap.exists()) webhookUrl = snap.data().gvg || '';
+  }).catch(() => {});
 
   // Load the single GvG composition
   unsubTeams = onSnapshot(doc(db, 'teamCompositions', 'gvg'), snap => {
@@ -1133,6 +1140,141 @@ window.saveTeams = async function () {
 // Expose clickAssign to inline handlers
 window.clickAssign = clickAssign;
 
+// ── RENDER ALL TEAMS AS SINGLE GRID IMAGE ──
+function renderTeamsGrid() {
+  const pad = 20, colGap = 16, rowGap = 16;
+  const cardW = 340;
+  const titleH = 40;
+  const partyHeaderH = 22;
+  const memberH = 26;
+  const emptySlotH = 22;
+  const partyGap = 8;
+  const cardPadTop = 36;
+  const cardPadBot = 10;
+
+  function cardHeight(team) {
+    let h = cardPadTop;
+    for (let pi = 0; pi < 3; pi++) {
+      const party = team.parties[pi];
+      const count = party.length;
+      const empty = Math.max(0, 5 - count);
+      h += partyHeaderH + count * memberH + empty * emptySlotH + partyGap;
+    }
+    return h + cardPadBot;
+  }
+
+  const maxCols = Math.min(teams.length, Math.max(1, Math.floor(1200 / (cardW + colGap))));
+  const rows = Math.ceil(teams.length / maxCols);
+  const rowHeights = [];
+  for (let r = 0; r < rows; r++) {
+    let maxH = 0;
+    for (let c = 0; c < maxCols; c++) {
+      const ti = r * maxCols + c;
+      if (ti < teams.length) maxH = Math.max(maxH, cardHeight(teams[ti]));
+    }
+    rowHeights.push(maxH);
+  }
+
+  const totalW = pad * 2 + maxCols * cardW + (maxCols - 1) * colGap;
+  const totalH = pad + titleH + rowHeights.reduce((a, b) => a + b, 0) + (rows - 1) * rowGap + pad;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalW * 2; canvas.height = totalH * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  ctx.fillStyle = '#e8eaf0';
+  ctx.font = 'bold 18px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText('GvG Teams', pad, pad + 24);
+
+  let curY = pad + titleH;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < maxCols; c++) {
+      const ti = r * maxCols + c;
+      if (ti >= teams.length) continue;
+      const team = teams[ti];
+      const x = pad + c * (cardW + colGap);
+      const y = curY;
+      const ch = cardHeight(team);
+      const allIds = getAllMemberIds(team);
+      const teamSize = allIds.length;
+
+      ctx.fillStyle = '#1a1d27';
+      ctx.strokeStyle = '#2e3348';
+      ctx.lineWidth = 1;
+      roundRect(ctx, x, y, cardW, ch, 8);
+
+      ctx.fillStyle = '#e8eaf0';
+      ctx.font = 'bold 13px "Segoe UI", system-ui, sans-serif';
+      ctx.fillText(team.name, x + 12, y + 22);
+      const countText = `${teamSize} / ${MAX_TEAM_SIZE}`;
+      ctx.font = '11px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = teamSize >= MAX_TEAM_SIZE ? '#e05252' : '#7a7f9a';
+      const cw = ctx.measureText(countText).width;
+      ctx.fillText(countText, x + cardW - 12 - cw, y + 22);
+
+      ctx.strokeStyle = '#2e3348';
+      ctx.beginPath(); ctx.moveTo(x, y + cardPadTop); ctx.lineTo(x + cardW, y + cardPadTop); ctx.stroke();
+
+      let py = y + cardPadTop;
+      for (let pi = 0; pi < 3; pi++) {
+        const party = team.parties[pi];
+        const partyMembers = party.map(id => members.find(m => m.id === id)).filter(Boolean);
+
+        ctx.fillStyle = '#22263a';
+        ctx.fillRect(x + 6, py, cardW - 12, partyHeaderH);
+        ctx.fillStyle = '#7a7f9a';
+        ctx.font = '10px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText(`PARTY ${pi + 1} (${partyMembers.length}/5)`, x + 14, py + 15);
+        py += partyHeaderH;
+
+        for (const m of partyMembers) {
+          const isLead = m.id === team.leadId;
+          if (isLead) {
+            ctx.fillStyle = 'rgba(245,197,66,0.06)';
+            ctx.fillRect(x + 6, py, cardW - 12, memberH);
+            ctx.fillStyle = '#f5c542';
+            ctx.fillRect(x + 6, py, 3, memberH);
+          }
+          if (isLead) {
+            ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+            ctx.fillText('\u{1F451}', x + 14, py + 18);
+          }
+          ctx.fillStyle = '#e8eaf0';
+          ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+          ctx.fillText(m.name, x + (isLead ? 32 : 14), py + 17);
+          if (m.class) {
+            ctx.fillStyle = '#7a7f9a';
+            ctx.font = '10px "Segoe UI", system-ui, sans-serif';
+            const classW = ctx.measureText(m.class).width;
+            ctx.fillText(m.class, x + cardW - 14 - classW, py + 17);
+          }
+          py += memberH;
+        }
+
+        const emptyCount = Math.max(0, 5 - partyMembers.length);
+        for (let s = 0; s < emptyCount; s++) {
+          ctx.strokeStyle = '#2e3348';
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(x + 16, py + emptySlotH);
+          ctx.lineTo(x + cardW - 16, py + emptySlotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          py += emptySlotH;
+        }
+        py += partyGap;
+      }
+    }
+    curY += rowHeights[r] + rowGap;
+  }
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
 // ── COPY TEAMS AS IMAGE ──
 window.copyTeamsAsImage = async function () {
   if (!isAdmin) return;
@@ -1141,154 +1283,7 @@ window.copyTeamsAsImage = async function () {
   btn.disabled = true; btn.textContent = 'Generating...';
 
   try {
-    // Build image on a hidden canvas
-    const pad = 20, colGap = 16, rowGap = 16;
-    const cardW = 340;
-    const titleH = 40;
-    const partyHeaderH = 22;
-    const memberH = 26;
-    const emptySlotH = 22;
-    const partyGap = 8;
-    const cardPadTop = 36; // team header
-    const cardPadBot = 10;
-
-    // Compute card heights
-    function cardHeight(team) {
-      let h = cardPadTop;
-      for (let pi = 0; pi < 3; pi++) {
-        const party = team.parties[pi];
-        const count = party.length;
-        const empty = Math.max(0, 5 - count);
-        h += partyHeaderH + count * memberH + empty * emptySlotH + partyGap;
-      }
-      return h + cardPadBot;
-    }
-
-    // Layout: auto-fill columns
-    const maxCols = Math.min(teams.length, Math.max(1, Math.floor(1200 / (cardW + colGap))));
-    const rows = Math.ceil(teams.length / maxCols);
-    const rowHeights = [];
-    for (let r = 0; r < rows; r++) {
-      let maxH = 0;
-      for (let c = 0; c < maxCols; c++) {
-        const ti = r * maxCols + c;
-        if (ti < teams.length) maxH = Math.max(maxH, cardHeight(teams[ti]));
-      }
-      rowHeights.push(maxH);
-    }
-
-    const totalW = pad * 2 + maxCols * cardW + (maxCols - 1) * colGap;
-    const totalH = pad + titleH + rowHeights.reduce((a, b) => a + b, 0) + (rows - 1) * rowGap + pad;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = totalW * 2; canvas.height = totalH * 2;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
-
-    // Background
-    ctx.fillStyle = '#0f1117';
-    ctx.fillRect(0, 0, totalW, totalH);
-
-    // Title
-    ctx.fillStyle = '#e8eaf0';
-    ctx.font = 'bold 18px "Segoe UI", system-ui, sans-serif';
-    ctx.fillText('GvG Teams', pad, pad + 24);
-
-    // Draw each team card
-    let curY = pad + titleH;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < maxCols; c++) {
-        const ti = r * maxCols + c;
-        if (ti >= teams.length) continue;
-        const team = teams[ti];
-        const x = pad + c * (cardW + colGap);
-        const y = curY;
-        const ch = cardHeight(team);
-        const allIds = getAllMemberIds(team);
-        const teamSize = allIds.length;
-
-        // Card bg
-        ctx.fillStyle = '#1a1d27';
-        ctx.strokeStyle = '#2e3348';
-        ctx.lineWidth = 1;
-        roundRect(ctx, x, y, cardW, ch, 8);
-
-        // Team header
-        ctx.fillStyle = '#e8eaf0';
-        ctx.font = 'bold 13px "Segoe UI", system-ui, sans-serif';
-        ctx.fillText(team.name, x + 12, y + 22);
-        const countText = `${teamSize} / ${MAX_TEAM_SIZE}`;
-        ctx.font = '11px "Segoe UI", system-ui, sans-serif';
-        ctx.fillStyle = teamSize >= MAX_TEAM_SIZE ? '#e05252' : '#7a7f9a';
-        const cw = ctx.measureText(countText).width;
-        ctx.fillText(countText, x + cardW - 12 - cw, y + 22);
-
-        // Divider under header
-        ctx.strokeStyle = '#2e3348';
-        ctx.beginPath(); ctx.moveTo(x, y + cardPadTop); ctx.lineTo(x + cardW, y + cardPadTop); ctx.stroke();
-
-        let py = y + cardPadTop;
-        for (let pi = 0; pi < 3; pi++) {
-          const party = team.parties[pi];
-          const partyMembers = party.map(id => members.find(m => m.id === id)).filter(Boolean);
-
-          // Party header bg
-          ctx.fillStyle = '#22263a';
-          ctx.fillRect(x + 6, py, cardW - 12, partyHeaderH);
-          ctx.fillStyle = '#7a7f9a';
-          ctx.font = '10px "Segoe UI", system-ui, sans-serif';
-          ctx.fillText(`PARTY ${pi + 1} (${partyMembers.length}/5)`, x + 14, py + 15);
-          py += partyHeaderH;
-
-          // Members
-          for (const m of partyMembers) {
-            const isLead = m.id === team.leadId;
-            if (isLead) {
-              ctx.fillStyle = 'rgba(245,197,66,0.06)';
-              ctx.fillRect(x + 6, py, cardW - 12, memberH);
-              // Gold left border
-              ctx.fillStyle = '#f5c542';
-              ctx.fillRect(x + 6, py, 3, memberH);
-            }
-            // Crown for lead
-            if (isLead) {
-              ctx.font = '12px "Segoe UI", system-ui, sans-serif';
-              ctx.fillText('\u{1F451}', x + 14, py + 18);
-            }
-            // Name
-            ctx.fillStyle = '#e8eaf0';
-            ctx.font = '12px "Segoe UI", system-ui, sans-serif';
-            ctx.fillText(m.name, x + (isLead ? 32 : 14), py + 17);
-            // Class
-            if (m.class) {
-              ctx.fillStyle = '#7a7f9a';
-              ctx.font = '10px "Segoe UI", system-ui, sans-serif';
-              const classW = ctx.measureText(m.class).width;
-              ctx.fillText(m.class, x + cardW - 14 - classW, py + 17);
-            }
-            py += memberH;
-          }
-
-          // Empty slots
-          const emptyCount = Math.max(0, 5 - partyMembers.length);
-          for (let s = 0; s < emptyCount; s++) {
-            ctx.strokeStyle = '#2e3348';
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(x + 16, py + emptySlotH);
-            ctx.lineTo(x + cardW - 16, py + emptySlotH);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            py += emptySlotH;
-          }
-          py += partyGap;
-        }
-      }
-      curY += rowHeights[r] + rowGap;
-    }
-
-    // Copy to clipboard
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const blob = await renderTeamsGrid();
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     showToast('Copied to clipboard! Paste in Discord.', 'ok');
   } catch (e) {
@@ -1319,6 +1314,125 @@ window.addEventListener('pagehide', () => {
   if (unsubMembers) { unsubMembers(); unsubMembers = null; }
   if (unsubTeams) { unsubTeams(); unsubTeams = null; }
 });
+
+// ── RENDER SINGLE PARTY AS IMAGE ──
+function renderPartyCard(team, partyIndex) {
+  const pad = 12;
+  const cardW = 200;
+  const headerH = 30;
+  const partyHeaderH = 22;
+  const memberH = 26;
+  const emptySlotH = 22;
+  const cardPadBot = 8;
+
+  const party = team.parties[partyIndex];
+  const partyMembers = party.map(id => members.find(m => m.id === id)).filter(Boolean);
+  const emptyCount = Math.max(0, 5 - partyMembers.length);
+
+  const ch = headerH + partyHeaderH + partyMembers.length * memberH + emptyCount * emptySlotH + cardPadBot;
+  const totalW = pad * 2 + cardW;
+  const totalH = pad * 2 + ch;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalW * 2; canvas.height = totalH * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  const x = pad, y = pad;
+
+  ctx.fillStyle = '#1a1d27'; ctx.strokeStyle = '#2e3348'; ctx.lineWidth = 1;
+  roundRect(ctx, x, y, cardW, ch, 8);
+
+  // Team name header
+  ctx.fillStyle = '#e8eaf0';
+  ctx.font = 'bold 12px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(team.name, x + 10, y + 19);
+
+  // Divider
+  ctx.strokeStyle = '#2e3348';
+  ctx.beginPath(); ctx.moveTo(x, y + headerH); ctx.lineTo(x + cardW, y + headerH); ctx.stroke();
+
+  // Party header
+  let py = y + headerH;
+  ctx.fillStyle = '#22263a';
+  ctx.fillRect(x + 6, py, cardW - 12, partyHeaderH);
+  ctx.fillStyle = '#7a7f9a';
+  ctx.font = '10px "Segoe UI", system-ui, sans-serif';
+  ctx.fillText(`PARTY ${partyIndex + 1} (${partyMembers.length}/5)`, x + 14, py + 15);
+  py += partyHeaderH;
+
+  // Members
+  for (const m of partyMembers) {
+    const isLead = m.id === team.leadId;
+    if (isLead) {
+      ctx.fillStyle = 'rgba(245,197,66,0.06)';
+      ctx.fillRect(x + 6, py, cardW - 12, memberH);
+      ctx.fillStyle = '#f5c542';
+      ctx.fillRect(x + 6, py, 3, memberH);
+    }
+    if (isLead) {
+      ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+      ctx.fillText('\u{1F451}', x + 14, py + 18);
+    }
+    ctx.fillStyle = '#e8eaf0';
+    ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+    ctx.fillText(m.name, x + (isLead ? 32 : 14), py + 17);
+    if (m.class) {
+      ctx.fillStyle = '#7a7f9a';
+      ctx.font = '10px "Segoe UI", system-ui, sans-serif';
+      const classW = ctx.measureText(m.class).width;
+      ctx.fillText(m.class, x + cardW - 14 - classW, py + 17);
+    }
+    py += memberH;
+  }
+
+  // Empty slots
+  for (let s = 0; s < emptyCount; s++) {
+    ctx.strokeStyle = '#2e3348';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x + 16, py + emptySlotH);
+    ctx.lineTo(x + cardW - 16, py + emptySlotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    py += emptySlotH;
+  }
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+// ── SEND TEAMS TO DISCORD VIA WEBHOOK ──
+window.sendTeamsToDiscord = async function () {
+  if (!isAdmin) return;
+  const btn = document.getElementById('discord-post-btn');
+  if (teams.length === 0) { showToast('No teams to post', 'err'); return; }
+  if (!webhookUrl) { showToast('No webhook URL configured. Set it in Firestore: settings/webhooks', 'err'); return; }
+  btn.disabled = true; btn.textContent = 'Posting...';
+
+  try {
+    for (const team of teams) {
+      const partyBlobs = await Promise.all([0, 1, 2].map(pi => renderPartyCard(team, pi)));
+      const form = new FormData();
+      const safeName = team.name.replace(/[^a-zA-Z0-9]/g, '_');
+      form.append('payload_json', JSON.stringify({ content: `**${team.name}**` }));
+      partyBlobs.forEach((blob, i) => {
+        form.append(`files[${i}]`, blob, `${safeName}_Party${i + 1}.png`);
+      });
+      const res = await fetch(webhookUrl, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`Discord returned ${res.status}`);
+    }
+
+    showToast('Teams posted to Discord!', 'ok');
+  } catch (e) {
+    console.error('Discord post failed:', e);
+    showToast('Failed to post: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Post to Discord';
+  }
+};
 </script>
 </body>
 </html>
