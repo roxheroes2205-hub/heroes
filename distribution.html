@@ -854,8 +854,8 @@ function calculateDistribution() {
     const results = eventResultsMap[ev.id] || [];
     const map = new Map();
     results.forEach(r => {
-      const name = r.memberName || r.nameFromImage || '';
-      map.set(name, parseInt(r.points) || 0);
+      const id = r.characterId || '';
+      if (id) map.set(id, parseInt(r.points) || 0);
     });
     return map;
   });
@@ -869,11 +869,12 @@ function calculateDistribution() {
   // Build distribution data from members
   distributionData = members.map(member => {
     const name = member.name;
+    const charId = member.characterId || '';
     const attempts = parseInt(member.attempts) || 0;
-    const row = { name, attempts };
+    const row = { name, charId, attempts };
 
     weekAAEvents.forEach((_, i) => {
-      row[`ev${i}Points`] = resultsMaps[i].get(name) || 0;
+      row[`ev${i}Points`] = (charId && resultsMaps[i].get(charId)) || 0;
       row[`ev${i}Boxes`] = 0;
       row[`ev${i}Status`] = '';
     });
@@ -970,7 +971,10 @@ function renderTableBody() {
   const tbody = document.getElementById('dist-tbody');
   const searchTerm = document.getElementById('search-input').value.toLowerCase();
 
-  let filtered = distributionData.filter(m => m.name.toLowerCase().includes(searchTerm));
+  let filtered = distributionData.filter(m =>
+    m.name.toLowerCase().includes(searchTerm) ||
+    (m.charId && m.charId.toLowerCase().includes(searchTerm))
+  );
 
   // Sort
   filtered.sort((a, b) => {
